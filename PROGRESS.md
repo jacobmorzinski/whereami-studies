@@ -2,7 +2,7 @@
 
 | Port | scaffold | conformance (mock) | Windows live | Linux | macOS | Anatomy |
 |---|---|---|---|---|---|---|
-| rust | ✅ | ✅ | 🟨 | ⬜ | ⬜ | ⬜ |
+| rust | ✅ | ✅ | 🟨 | ⬜ | ⬜ | ✅ |
 | csharp | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | java | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | fsharp | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |

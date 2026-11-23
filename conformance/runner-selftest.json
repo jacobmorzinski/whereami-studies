@@ -1,0 +1,5 @@
+[
+  { "name": "exact-wrong-case", "args": ["--version"], "exit": 0, "stdout": { "exact": "WHEREAMI 0.4.0 ({os})\n" } },
+  { "name": "json-value-wrong-case", "platforms": ["windows"], "args": ["Paris", "--json"], "exit": 1, "stdout": { "json": { "error": "Platform_Unsupported" } } },
+  { "name": "json-key-wrong-case", "args": ["--mock=1,2", "--json"], "exit": 0, "stdout": { "json": { "Latitude": 1, "longitude": 2, "accuracy": 0, "address": null } } }
+]
