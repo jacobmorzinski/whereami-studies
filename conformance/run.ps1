@@ -6,11 +6,16 @@
   pwsh conformance/run.ps1 -Port rust
   pwsh conformance/run.ps1            # all ports in ports.json
 #>
-param([string]$Port = 'all')
+param(
+    [string]$Port = 'all',
+    # Alternative cases file, e.g. to check that the runner itself catches mistakes.
+    [string]$CasesPath
+)
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$cases = Get-Content -Raw (Join-Path $root 'spec/cases.json') | ConvertFrom-Json -AsHashtable
+if (-not $CasesPath) { $CasesPath = Join-Path $root 'spec/cases.json' }
+$cases = Get-Content -Raw $CasesPath | ConvertFrom-Json -AsHashtable
 $ports = Get-Content -Raw (Join-Path $PSScriptRoot 'ports.json') | ConvertFrom-Json -AsHashtable
 
 $os = if ($IsWindows) { 'windows' } elseif ($IsMacOS) { 'macos' } else { 'linux' }
@@ -33,7 +38,7 @@ function Test-JsonEqual($a, $b) {
         return $true
     }
     if ($a.GetType() -ne $b.GetType()) { return $false }
-    return $a -eq $b
+    return $a -ceq $b   # -eq ignores case for strings
 }
 
 function Invoke-Port([string]$exe, [string[]]$arguments) {
@@ -55,7 +60,7 @@ function Get-Failure($case, $r) {
     if ($s) {
         if ($s.Contains('exact')) {
             $want = $s.exact -replace '\{os\}', $os
-            if ($r.Stdout -ne $want) { return "stdout $(ConvertTo-Json $r.Stdout), expected $(ConvertTo-Json $want)" }
+            if ($r.Stdout -cne $want) { return "stdout $(ConvertTo-Json $r.Stdout), expected $(ConvertTo-Json $want)" }
         } elseif ($s.Contains('json')) {
             try { $got = $r.Stdout | ConvertFrom-Json -AsHashtable } catch { return "stdout is not JSON: $(ConvertTo-Json $r.Stdout)" }
             if (-not (Test-JsonEqual $got $s.json)) { return "stdout JSON $($r.Stdout.Trim()), expected $(ConvertTo-Json $s.json -Compress)" }

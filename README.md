@@ -33,3 +33,6 @@ pwsh conformance/run.ps1 -Port rust
 
 `whereami` is © 2026 George Mandis, MIT licensed. These ports follow its
 behavior and structure.
+
+To check the runner itself: `pwsh conformance/run.ps1 -Port rust -CasesPath conformance/runner-selftest.json`
+must report every case as FAIL (each one encodes a deliberate mistake).
