@@ -11,6 +11,6 @@ each port lands. Each port's README has the long version under **Anatomy**.
 | JSON | `serde` `#[derive(Serialize)]` + `serde_json::to_string` | | | | |
 | Per-OS selection | `#[cfg(target_os = …)]`: compile time, other OSes' code not built | | | | |
 | Windows binding | `windows` crate (Microsoft-generated WinRT projection), feature `Devices_Geolocation` | | | | |
-| Async wait | `IAsyncOperation::join()` blocks | | | | |
+| Async wait | `IAsyncOperation::join()` blocks; bounded by a worker thread + `mpsc::recv_timeout` | | | | |
 | Error handling | `Result` + `?`; HRESULT → `LocationError` in `map_hresult` | | | | |
 | Testability | `app::run(&Request, &dyn Platform)` + a `Fake` platform | | | | |

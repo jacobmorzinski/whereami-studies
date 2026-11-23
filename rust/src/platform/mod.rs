@@ -26,6 +26,51 @@ pub trait Platform {
     fn geocode(&self, query: &str) -> Result<Option<GeocodeResult>, LocationError>;
 }
 
+/// Run a blocking OS query on a worker thread and give up after `timeout`.
+///
+/// OS calls like `.join()` on a WinRT async operation can block with no limit
+/// of their own. If time runs out we return `Timeout` and leave the worker
+/// behind; the process exits right after, which ends it.
+#[allow(dead_code)] // used by the Windows backend only
+pub(crate) fn with_timeout<F>(timeout: Duration, query: F) -> Result<Location, LocationError>
+where
+    F: FnOnce() -> Result<Location, LocationError> + Send + 'static,
+{
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        // The receiver may be gone if we already timed out; that's fine.
+        let _ = tx.send(query());
+    });
+    rx.recv_timeout(timeout).unwrap_or(Err(LocationError::Timeout))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn with_timeout_returns_result_when_fast() {
+        let r = with_timeout(Duration::from_secs(5), || Ok(Location { latitude: 1.0, longitude: 2.0, accuracy: 3.0 }));
+        assert_eq!(r, Ok(Location { latitude: 1.0, longitude: 2.0, accuracy: 3.0 }));
+    }
+
+    #[test]
+    fn with_timeout_passes_errors_through() {
+        assert_eq!(with_timeout(Duration::from_secs(5), || Err(LocationError::PermissionDenied)), Err(LocationError::PermissionDenied));
+    }
+
+    #[test]
+    fn with_timeout_gives_up_when_slow() {
+        let start = std::time::Instant::now();
+        let r = with_timeout(Duration::from_millis(50), || {
+            std::thread::sleep(Duration::from_secs(2));
+            Ok(Location { latitude: 0.0, longitude: 0.0, accuracy: 0.0 })
+        });
+        assert_eq!(r, Err(LocationError::Timeout));
+        assert!(start.elapsed() < Duration::from_secs(1), "waited {:?}", start.elapsed());
+    }
+}
+
 /// The implementation for the OS we were compiled for.
 pub fn native() -> Box<dyn Platform> {
     #[cfg(target_os = "windows")]
