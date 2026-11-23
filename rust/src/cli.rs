@@ -4,12 +4,7 @@ use crate::model::Location;
 use clap::{ArgAction, CommandFactory, Parser, error::ErrorKind};
 use std::ffi::OsString;
 
-#[cfg(target_os = "windows")]
-const VERSION: &str = "0.4.0 (windows)";
-#[cfg(target_os = "macos")]
-const VERSION: &str = "0.4.0 (macos)";
-#[cfg(not(any(target_os = "windows", target_os = "macos")))]
-const VERSION: &str = "0.4.0 (linux)";
+use crate::platform::VERSION;
 
 /// Get your current location using native OS location services,
 /// or look up an address or a pair of coordinates.

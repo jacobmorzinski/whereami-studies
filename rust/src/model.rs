@@ -32,6 +32,7 @@ pub enum LocationError {
     PermissionDenied,
     LocationUnavailable,
     Timeout,
+    #[allow(dead_code)] // produced by the macOS geocoder, not written yet
     GeocodingFailed,
     PlatformUnsupported,
 }
