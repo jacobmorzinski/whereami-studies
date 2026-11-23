@@ -148,7 +148,7 @@ the following:
 | Declares vtable structs, calls `vtable.GetGeopositionAsync(self, &out)` | `geolocator.GetGeopositionAsync()` |
 | `RoInitialize`, `WindowsCreateString`, `RoActivateInstance` | `Geolocator::new()` |
 | `QueryInterface` + `Release` on every object | automatic (`Drop`) |
-| Polls `IAsyncInfo::GetStatus` in a loop | `.join()` blocks until done |
+| Polls `IAsyncInfo::GetStatus` in a loop, giving up after 10 s | `.join()` blocks until done; `platform::with_timeout` runs it on a worker thread and stops waiting after 10 s |
 | Checks every `HRESULT` | `?` turns a failing HRESULT into `Err(windows::core::Error)` |
 
 The `?` operator means "if this is an error, return it from the function

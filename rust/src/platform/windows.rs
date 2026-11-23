@@ -46,8 +46,12 @@ fn query(timeout: Duration) -> windows::core::Result<Result<Location, LocationEr
 }
 
 impl Platform for Windows {
+    /// The whole request (access check + position fix) gets `timeout` in total.
+    /// `.join()` has no limit of its own, so the query runs under `with_timeout`.
     fn get_location(&self, timeout: Duration) -> Result<Location, LocationError> {
-        query(timeout).unwrap_or_else(|e| Err(map_hresult(e.code().0)))
+        super::with_timeout(timeout, move || {
+            query(timeout).unwrap_or_else(|e| Err(map_hresult(e.code().0)))
+        })
     }
 
     /// Windows has no built-in geocoder (MapLocationFinder needs a Bing Maps key).
