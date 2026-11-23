@@ -1,0 +1,14 @@
+[package]
+name = "whereami"
+version = "0.4.0"
+edition = "2024"
+description = "Where am I? Asks the OS's native location service. A Rust port of georgemandis/whereami."
+license = "MIT"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Devices_Geolocation", "Foundation"] }
