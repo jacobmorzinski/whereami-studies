@@ -1,0 +1,7 @@
+{
+  "rust": {
+    "path": "rust/target/release/whereami",
+    "build": "cargo build --release --manifest-path rust/Cargo.toml",
+    "features": { "completions": false }
+  }
+}

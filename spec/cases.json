@@ -1,0 +1,49 @@
+[
+  { "name": "version", "args": ["--version"], "exit": 0, "stdout": { "exact": "whereami 0.4.0 ({os})\n" } },
+  { "name": "version-short", "args": ["-v"], "exit": 0, "stdout": { "exact": "whereami 0.4.0 ({os})\n" } },
+  { "name": "help", "args": ["--help"], "exit": 0, "stdout": { "nonempty": true } },
+  { "name": "help-short", "args": ["-h"], "exit": 0, "stdout": { "nonempty": true } },
+
+  { "name": "mock-human", "args": ["--mock=40.7128,-74.0060"], "exit": 0,
+    "stdout": { "exact": "Location: 40.7128, -74.0060\nAccuracy: 0m\n" } },
+  { "name": "mock-json", "args": ["--mock=40.7128,-74.0060", "--json"], "exit": 0,
+    "stdout": { "json": { "latitude": 40.7128, "longitude": -74.006, "accuracy": 0, "address": null } } },
+  { "name": "mock-json-first", "args": ["--json", "--mock=40.7128,-74.0060"], "exit": 0,
+    "stdout": { "json": { "latitude": 40.7128, "longitude": -74.006, "accuracy": 0, "address": null } } },
+  { "name": "mock-negative", "args": ["--mock=-33.8688,151.2093"], "exit": 0,
+    "stdout": { "exact": "Location: -33.8688, 151.2093\nAccuracy: 0m\n" } },
+  { "name": "mock-spaces", "args": ["--mock= 51.5 , -0.1276"], "exit": 0,
+    "stdout": { "exact": "Location: 51.5000, -0.1276\nAccuracy: 0m\n" } },
+  { "name": "mock-unchecked-range", "args": ["--mock=200,400"], "exit": 0,
+    "stdout": { "exact": "Location: 200.0000, 400.0000\nAccuracy: 0m\n" } },
+
+  { "name": "mock-no-comma", "args": ["--mock=40.7128"], "exit": 2 },
+  { "name": "mock-not-number", "args": ["--mock=abc,def"], "exit": 2 },
+  { "name": "mock-three-parts", "args": ["--mock=1,2,3"], "exit": 2 },
+  { "name": "mock-nan", "args": ["--mock=nan,0"], "exit": 2 },
+  { "name": "mock-inf", "args": ["--mock=0,inf"], "exit": 2 },
+  { "name": "json-usage-error-no-stdout", "args": ["--json", "--mock=x"], "exit": 2, "stdout": { "empty": true } },
+
+  { "name": "at-lat-out", "args": ["--at=91,0"], "exit": 2 },
+  { "name": "at-lon-out", "args": ["--at=0,-180.5"], "exit": 2 },
+  { "name": "at-boundary", "platforms": ["windows", "linux"], "args": ["--at=90,-180"], "exit": 0,
+    "stdout": { "exact": "Location: 90.0000, -180.0000\n" },
+    "stderr_contains": "Warning: no address found for these coordinates." },
+  { "name": "at-json", "platforms": ["windows", "linux"], "args": ["--at=40.6892,-73.9857", "--json"], "exit": 0,
+    "stdout": { "json": { "latitude": 40.6892, "longitude": -73.9857, "accuracy": 0, "address": null } } },
+
+  { "name": "at-and-mock", "args": ["--at=1,2", "--mock=1,2"], "exit": 2 },
+  { "name": "address-and-mock", "args": ["--mock=1,2", "Paris"], "exit": 2 },
+  { "name": "empty-address", "args": ["   "], "exit": 2 },
+  { "name": "unknown-flag", "args": ["--bogus"], "exit": 2 },
+
+  { "name": "address-unsupported", "platforms": ["windows", "linux"], "args": ["Paris"], "exit": 1,
+    "stdout": { "empty": true }, "stderr_contains": "address lookup is not supported on this platform" },
+  { "name": "address-unsupported-json", "platforms": ["windows", "linux"], "args": ["Paris", "--json"], "exit": 1,
+    "stdout": { "json": { "error": "platform_unsupported" } } },
+  { "name": "address-multiword", "platforms": ["windows", "linux"], "args": ["350", "5th", "Ave"], "exit": 1,
+    "stderr_contains": "address lookup is not supported" },
+
+  { "name": "completions-reserved", "requires": { "completions": false }, "args": ["completions", "bash"], "exit": 2,
+    "stdout": { "empty": true }, "stderr_contains": "completions are not available in this port" }
+]
