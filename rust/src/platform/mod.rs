@@ -4,7 +4,10 @@
 use crate::model::{Address, GeocodeResult, Location, LocationError};
 use std::time::Duration;
 
+#[cfg(not(target_os = "windows"))]
 mod unsupported;
+#[cfg(target_os = "windows")]
+mod windows;
 
 // `concat!` only takes literals, so the version line is spelled out per OS.
 #[cfg(target_os = "windows")]
@@ -25,5 +28,8 @@ pub trait Platform {
 
 /// The implementation for the OS we were compiled for.
 pub fn native() -> Box<dyn Platform> {
-    Box::new(unsupported::Unsupported)
+    #[cfg(target_os = "windows")]
+    return Box::new(windows::Windows);
+    #[cfg(not(target_os = "windows"))]
+    return Box::new(unsupported::Unsupported);
 }
