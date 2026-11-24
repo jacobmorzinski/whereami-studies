@@ -5,7 +5,7 @@
 | rust | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | csharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | java | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
-| fsharp | ✅ | ✅ | 🟨 | ⬜ | ⬜ | ⬜ |
+| fsharp | ✅ | ✅ | 🟨 | ⬜ | ⬜ | ✅ |
 | clojure | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
