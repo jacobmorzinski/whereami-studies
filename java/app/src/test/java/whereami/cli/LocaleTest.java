@@ -28,4 +28,9 @@ class LocaleTest {
         assertTrue(Output.human(new Location(40.7128, -74.0060, 0), null, true)
                 .startsWith("Location: 40.7128, -74.0060"));
     }
+
+    @Test
+    void parsingIsLocaleIndependent() {
+        assertEquals(40.7128, Coordinates.parse("40.7128,-74.006").latitude());
+    }
 }
