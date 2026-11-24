@@ -211,6 +211,10 @@ C# projection generates for you:
   - [`ComTest`](platform/src/test/java/whereami/platform/windows/ComTest.java)
     tests this on any OS with a fake object. Its vtable holds *upcall stubs*:
     native function pointers that call back into Java methods.
+    [`AwaitAsyncTest`](platform/src/test/java/whereami/platform/windows/AwaitAsyncTest.java)
+    uses the same trick to fake an async operation and test the
+    error, canceled, deadline and interrupt paths, including that `Cancel`
+    and `Release` are called.
 - **[`HResults`](platform/src/main/java/whereami/platform/windows/HResults.java)**:
   maps failure codes the same way as Rust's `map_hresult`.
 - **[`WindowsPlatform`](platform/src/main/java/whereami/platform/windows/WindowsPlatform.java)**:

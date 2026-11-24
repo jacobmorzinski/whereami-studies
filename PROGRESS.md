@@ -29,5 +29,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
 - 2026-11-23 java, Windows live: with location allowed, human and `--json`
   output both correct (same position as the Rust port), exit 0, nothing on
   stderr. With *Let desktop apps access your location* off: correct
-  permission-denied error (checked by hand). One run during that check
-  printed `Error: location request timed out.` instead; cause not yet known.
+  permission-denied error (checked by hand). One run instead showed a Windows
+  dialog, "Java is requesting permission". Left unanswered, it gave
+  `Error: location request timed out.` after 10 s, which is correct: Windows
+  asks per app, and the app here is `java.exe`.

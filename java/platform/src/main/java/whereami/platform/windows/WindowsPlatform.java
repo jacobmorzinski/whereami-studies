@@ -162,8 +162,9 @@ public final class WindowsPlatform implements Platform {
      * Waits for a WinRT async operation by polling its IAsyncInfo.Status, as
      * windows.zig does. (The alternative is registering a completion callback,
      * which in Java would mean an upcall stub implementing a COM interface.)
+     * Package-private so {@code AwaitAsyncTest} can drive it with a fake operation.
      */
-    private static void awaitAsync(MemorySegment operation, long deadline, Arena arena) throws LocationException {
+    static void awaitAsync(MemorySegment operation, long deadline, Arena arena) throws LocationException {
         MemorySegment info = Com.queryInterface(operation, Guid.allocate(arena, IID_IASYNC_INFO), arena);
         try {
             MemorySegment value = arena.allocate(JAVA_INT);
