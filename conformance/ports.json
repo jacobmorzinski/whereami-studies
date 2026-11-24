@@ -18,5 +18,11 @@
     "path": "fsharp/out/windows/whereami",
     "build": "dotnet publish fsharp/src/Whereami -c Release -f net10.0-windows10.0.19041.0 -o fsharp/out/windows",
     "features": { "completions": false }
+  },
+  "clojure": {
+    "path": "clojure/target/whereami.jar",
+    "launcher": ["java", "-jar"],
+    "build": "java/gradlew.bat -p java :platform:jar; Push-Location clojure; clojure -T:build uber; Pop-Location",
+    "features": { "completions": false }
   }
 }
