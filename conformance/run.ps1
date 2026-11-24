@@ -90,8 +90,15 @@ foreach ($name in $names) {
         $failedAny = $true
         continue
     }
+    # A port whose build output isn't itself executable (e.g. a jar) names a
+    # launcher: run launcher[0] with launcher[1..], then the path, then the case args.
+    $prefix = @()
+    if ($cfg.launcher) {
+        $prefix = @($cfg.launcher | Select-Object -Skip 1) + $exe
+        $exe = (Get-Command $cfg.launcher[0] -CommandType Application | Select-Object -First 1).Source
+    }
 
-    Write-Host "== $name ($exe)"
+    Write-Host "== $name ($exe $prefix)"
     $pass = 0; $fail = 0; $skip = 0
     foreach ($case in $cases) {
         if ($case.Contains('platforms') -and $os -notin $case.platforms) { $skip++; continue }
@@ -104,7 +111,7 @@ foreach ($name in $names) {
         }
         if ($unmet) { $skip++; continue }
 
-        $why = Get-Failure $case (Invoke-Port $exe ([string[]]$case.args))
+        $why = Get-Failure $case (Invoke-Port $exe ([string[]](@($prefix) + @($case.args))))
         if ($why) { Write-Host "FAIL $($case.name): $why"; $fail++ } else { Write-Host "PASS $($case.name)"; $pass++ }
     }
     Write-Host "$pass passed, $fail failed, $skip skipped"
