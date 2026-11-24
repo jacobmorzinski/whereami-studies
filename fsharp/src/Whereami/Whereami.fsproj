@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Plain net10.0 runs on any OS; the -windows target adds the WinRT projection and the WINDOWS symbol. -->
+    <TargetFrameworks>net10.0;net10.0-windows10.0.19041.0</TargetFrameworks>
+    <AssemblyName>whereami</AssemblyName>
+    <Version>0.4.0</Version>
+  </PropertyGroup>
+
+  <!-- F# compiles files in this order: each file can only use the ones above it. -->
+  <ItemGroup>
+    <Compile Include="Model.fs" />
+    <Compile Include="Output.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Whereami.Tests" />
+  </ItemGroup>
+
+</Project>

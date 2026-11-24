@@ -5,3 +5,6 @@ csharp/**/obj/
 csharp/out/
 java/**/build/
 java/.gradle/
+fsharp/**/bin/
+fsharp/**/obj/
+fsharp/out/

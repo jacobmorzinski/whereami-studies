@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Whereami/Whereami.fsproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Whereami.Tests/Whereami.Tests.fsproj" />
+  </Folder>
+</Solution>
