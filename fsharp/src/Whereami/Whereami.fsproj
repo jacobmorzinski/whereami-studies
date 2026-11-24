@@ -15,6 +15,7 @@
     <Compile Include="Platform.fs" />
     <Compile Include="Native.fs" />
     <Compile Include="CommandLine.fs" />
+    <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

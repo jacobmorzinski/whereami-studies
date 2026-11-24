@@ -13,5 +13,10 @@
     "path": "java/app/build/install/whereami/bin/whereami",
     "build": "java/gradlew.bat -p java :app:installDist",
     "features": { "completions": false }
+  },
+  "fsharp": {
+    "path": "fsharp/out/windows/whereami",
+    "build": "dotnet publish fsharp/src/Whereami -c Release -f net10.0-windows10.0.19041.0 -o fsharp/out/windows",
+    "features": { "completions": false }
   }
 }

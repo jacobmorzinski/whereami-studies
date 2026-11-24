@@ -29,8 +29,8 @@ type Parsed =
 [<HelpFlags("--help", "-h")>] // without this, only --help is help (-h would be an address)
 type Args =
     | Json
-    | [<EqualsAssignmentOrSpaced>] Mock of lat_lon: string
-    | [<EqualsAssignmentOrSpaced>] At of lat_lon: string
+    | [<EqualsAssignmentOrSpaced>] Mock of ``LAT,LON``: string
+    | [<EqualsAssignmentOrSpaced>] At of ``LAT,LON``: string
     | [<AltCommandLine("-v")>] Version
     | [<MainCommand>] Address of address: string list
 
