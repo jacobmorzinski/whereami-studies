@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Whereami/Whereami.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Whereami.Tests/Whereami.Tests.csproj" />
+  </Folder>
+</Solution>

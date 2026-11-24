@@ -1,2 +1,5 @@
 original/
 rust/target/
+csharp/**/bin/
+csharp/**/obj/
+csharp/out/
