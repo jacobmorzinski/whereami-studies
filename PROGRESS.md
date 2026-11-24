@@ -4,7 +4,7 @@
 |---|---|---|---|---|---|---|
 | rust | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | csharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
-| java | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
+| java | ✅ | ✅ | 🟨 | ⬜ | ⬜ | ⬜ |
 | fsharp | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | clojure | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
@@ -26,3 +26,9 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
 - 2026-11-23 csharp: `Console.OutputEncoding = UTF-8` does not leave the
   calling console changed — `cmd /c chcp` still reports 437 after a run
   (checked by hand in Windows Terminal).
+- 2026-11-23 java, Windows live: with location allowed, human and `--json`
+  output both correct (same position as the Rust port), exit 0, nothing on
+  stderr. **Still to check by hand:** with *Let desktop apps access your
+  location* off, `java/app/build/install/whereami/bin/whereami.bat --json`
+  should print `{"error":"permission_denied"}` and the denied message, exit 1.
+  Then mark ✅.
