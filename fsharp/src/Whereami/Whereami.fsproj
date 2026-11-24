@@ -13,6 +13,7 @@
     <Compile Include="Model.fs" />
     <Compile Include="Output.fs" />
     <Compile Include="Platform.fs" />
+    <Compile Include="Windows.fs" />
     <Compile Include="Native.fs" />
     <Compile Include="CommandLine.fs" />
     <Compile Include="App.fs" />
