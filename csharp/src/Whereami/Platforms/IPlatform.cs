@@ -20,6 +20,17 @@ public static class Platforms
     public static string OsName =>
         OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsMacOS() ? "macos" : "linux";
 
-    /// The implementation for the OS we're running on.
-    public static IPlatform Native() => new UnsupportedPlatform();
+    /// The implementation for the OS we're running on. Two layers:
+    /// #if WINDOWS — is the Windows code compiled into this build at all?
+    /// OperatingSystem.IsWindows() — are we actually running on Windows?
+    public static IPlatform Native()
+    {
+#if WINDOWS
+        if (OperatingSystem.IsWindows())
+        {
+            return new WindowsPlatform();
+        }
+#endif
+        return new UnsupportedPlatform();
+    }
 }
