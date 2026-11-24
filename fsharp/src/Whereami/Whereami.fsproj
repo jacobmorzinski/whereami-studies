@@ -12,11 +12,18 @@
   <ItemGroup>
     <Compile Include="Model.fs" />
     <Compile Include="Output.fs" />
+    <Compile Include="Platform.fs" />
+    <Compile Include="Native.fs" />
+    <Compile Include="CommandLine.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Whereami.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Argu" Version="6.2.5" />
   </ItemGroup>
 
 </Project>

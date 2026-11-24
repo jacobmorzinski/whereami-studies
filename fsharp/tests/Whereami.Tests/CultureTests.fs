@@ -18,3 +18,9 @@ type CultureTests() =
         Assert.StartsWith(
             "Location: 40.7128, -74.0060",
             Output.human { Latitude = 40.7128; Longitude = -74.0060; Accuracy = 0. } None true)
+
+    [<Fact>]
+    member _.ParsingIsInvariant() =
+        Assert.Equal(
+            Some { Latitude = 40.7128; Longitude = -74.0060; Accuracy = 0. },
+            CommandLine.parseCoord "40.7128,-74.0060")
