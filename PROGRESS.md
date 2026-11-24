@@ -6,7 +6,7 @@
 | csharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | java | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | fsharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
-| clojure | ✅ | ✅ | 🟨 | ⬜ | ⬜ | ⬜ |
+| clojure | ✅ | ✅ | 🟨 | ⬜ | ⬜ | ✅ |
 
 Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
 
