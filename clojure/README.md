@@ -74,7 +74,7 @@ puts the same setting in its start script as `--enable-native-access`.)
 ### 3. [`main.clj`](src/whereami/main.clj): the entry point
 
 - `(:gen-class)` in the `ns` form makes AOT compilation emit a real class, `whereami.main`, whose static `main` calls `-main`.
-- `-main` parses the arguments, runs the app (or takes the help/usage text), prints, and calls `System/exit`. The explicit exit matters: `future` threads aren't daemons, so a hung OS call would otherwise keep the JVM alive.
+- `-main` is one line: `(System/exit (main* args platform out err))`. `main*` parses the arguments, runs the app (or takes the help/usage text), prints, and returns the exit code; [`main_test`](test/whereami/main_test.clj) calls it directly. An unexpected exception inside `main*` prints its stack trace and gives exit 1, so `System/exit` always runs. That matters because `future` threads aren't daemons: the first version let an unexpected exception escape `-main`, and the idle pool thread kept the JVM alive for about a minute.
 - `utf8-writer`: Java writes to the console in its code page (437 here), so `-main` wraps `System/out` and `System/err` in UTF-8 writers. That's the same job as C#'s `Console.OutputEncoding` and the Java port's `-Dstdout.encoding`.
 
 ### 4. [`cli.clj`](src/whereami/cli.clj): tools.cli, and checks as data
@@ -160,7 +160,7 @@ Checked exceptions don't exist for Clojure: `getLocation` is declared
 This namespace is where Java values become Clojure data:
 - `Location` and `Address` records become maps.
 - `Optional` becomes the value or `nil`.
-- `LocationException` becomes `{:error :permission-denied}`.
+- `LocationException` becomes `{:error :permission-denied}`. The enum-to-keyword mapping is an explicit map. The first version lowercased the enum names with `str/lower-case`, which uses the machine's locale, and on a Turkish machine produced `:t?meout` with a dotless ı. [`turkish_locale_test`](test/whereami/turkish_locale_test.clj) pins the fix.
 
 **Type hints** (`^Platform p`, `^Location l`) tell the compiler the Java type. Without them, `(.getLocation p …)` would be looked up by reflection on every call. `(set! *warn-on-reflection* true)` makes the compiler warn about any call it couldn't resolve; building the jar prints no such warnings.
 
