@@ -3,7 +3,7 @@
 | Port | scaffold | conformance (mock) | Windows live | Linux | macOS | Anatomy |
 |---|---|---|---|---|---|---|
 | rust | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
-| csharp | ✅ | ✅ | 🟨 | ⬜ | ⬜ | ✅ |
+| csharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | java | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | fsharp | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | clojure | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
@@ -21,7 +21,8 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
 - 2026-11-23 rust: whole Windows request (access check + fix) now bounded by
   the 10 s timeout, matching the original.
 - 2026-11-23 csharp, Windows live: with location allowed, human and `--json`
-  output both correct, exit 0. **Still to check by hand:** with *Let desktop
-  apps access your location* off, `csharp/out/windows/whereami.exe --json`
-  should print `{"error":"permission_denied"}` and the denied message, exit 1.
-  Then mark ✅.
+  output both correct, exit 0. With *Let desktop apps access your location*
+  off: correct permission-denied error (checked by hand).
+- 2026-11-23 csharp: `Console.OutputEncoding = UTF-8` does not leave the
+  calling console changed — `cmd /c chcp` still reports 437 after a run
+  (checked by hand in Windows Terminal).
