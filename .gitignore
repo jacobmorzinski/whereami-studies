@@ -8,3 +8,7 @@ java/.gradle/
 fsharp/**/bin/
 fsharp/**/obj/
 fsharp/out/
+clojure/target/
+clojure/.cpcache/
+clojure/.clj-kondo/.cache/
+clojure/.nrepl-port
