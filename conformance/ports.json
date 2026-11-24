@@ -3,5 +3,10 @@
     "path": "rust/target/release/whereami",
     "build": "cargo build --release --manifest-path rust/Cargo.toml",
     "features": { "completions": false }
+  },
+  "csharp": {
+    "path": "csharp/out/windows/whereami",
+    "build": "dotnet publish csharp/src/Whereami -c Release -f net10.0-windows10.0.19041.0 -o csharp/out/windows",
+    "features": { "completions": false }
   }
 }

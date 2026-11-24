@@ -43,6 +43,8 @@
     "stdout": { "json": { "error": "platform_unsupported" } } },
   { "name": "address-multiword", "platforms": ["windows", "linux"], "args": ["350", "5th", "Ave"], "exit": 1,
     "stderr_contains": "address lookup is not supported" },
+  { "name": "address-at-sign", "platforms": ["windows", "linux"], "args": ["@home"], "exit": 1,
+    "stderr_contains": "address lookup is not supported" },
 
   { "name": "completions-reserved", "requires": { "completions": false }, "args": ["completions", "bash"], "exit": 2,
     "stdout": { "empty": true }, "stderr_contains": "completions are not available in this port" }
