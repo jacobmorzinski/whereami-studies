@@ -6,7 +6,7 @@
 | csharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | java | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | fsharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
-| clojure | ✅ | ✅ | 🟨 | ⬜ | ⬜ | ✅ |
+| clojure | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 
 Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
 
@@ -40,9 +40,5 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
 - 2026-11-24 clojure, Windows live (the Java port's WindowsPlatform, through
   interop): with location allowed, human and `--json` output both correct
   (same position as the Rust port), exit 0, nothing on stderr (no FFM
-  warning: the jar manifest enables native access). **Still to check by
-  hand:** with *Let desktop apps access your location* off,
-  `java -jar clojure/target/whereami.jar --json` should print
-  `{"error":"permission_denied"}` and the denied message, exit 1. Windows
-  may first show a "Java is requesting permission" dialog, as for the Java
-  port. Then mark ✅.
+  warning: the jar manifest enables native access). With *Let desktop apps access your location* off:
+  correct permission-denied error (checked by hand).
