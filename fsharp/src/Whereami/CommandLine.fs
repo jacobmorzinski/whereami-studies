@@ -88,7 +88,9 @@ module CommandLine =
 
     /// The rules Argu can't express declaratively, in order.
     let private validate (results: ParseResults<Args>) : Parsed =
-        let words = results.GetResult(Args.Address, defaultValue = [])
+        // Each run of leftover words is a separate Address result ("a --json b" gives two);
+        // GetResult would return only the last run, so collect them all.
+        let words = results.GetResults Args.Address |> List.concat
         let query = (String.concat " " words).Trim()
         let hasAddress = not words.IsEmpty
         if results.Contains Args.Version then
