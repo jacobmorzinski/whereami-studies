@@ -57,6 +57,14 @@ let unknownFlagIsUsageError () =
     assertUsage [ "--bogus" ]
     assertUsage [ "Paris"; "-x" ]
 
+/// Argu records each run of leftover words separately; a flag between
+/// them must not make the earlier words disappear.
+[<Fact>]
+let wordsAroundAFlagAreKept () =
+    assertUsage [ "--bogus"; "--json"; "Paris" ]
+    assertUsage [ "completions"; "--json"; "bash" ]
+    Assert.Equal(Lookup "350 5th Ave", (request [ "350"; "5th"; "--json"; "Ave" ]).Mode)
+
 [<Fact>]
 let atSignIsAddress () =
     Assert.Equal(Lookup "@home", (request [ "@home" ]).Mode)
