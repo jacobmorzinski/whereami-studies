@@ -1,5 +1,7 @@
 package whereami.platform;
 
+import whereami.platform.windows.WindowsPlatform;
+
 /**
  * Picks the implementation for the OS we're running on. Java has no
  * conditional compilation: every backend is compiled on every OS, and the
@@ -21,6 +23,9 @@ public final class Platforms {
     }
 
     public static Platform nativePlatform() {
-        return new UnsupportedPlatform();
+        return switch (osName()) {
+            case "windows" -> new WindowsPlatform();
+            default -> new UnsupportedPlatform();
+        };
     }
 }
