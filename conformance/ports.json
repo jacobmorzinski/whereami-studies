@@ -8,5 +8,10 @@
     "path": "csharp/out/windows/whereami",
     "build": "dotnet publish csharp/src/Whereami -c Release -f net10.0-windows10.0.19041.0 -o csharp/out/windows",
     "features": { "completions": false }
+  },
+  "java": {
+    "path": "java/app/build/install/whereami/bin/whereami",
+    "build": "java/gradlew.bat -p java :app:installDist",
+    "features": { "completions": false }
   }
 }

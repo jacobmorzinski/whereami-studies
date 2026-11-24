@@ -84,6 +84,7 @@ foreach ($name in $names) {
     $cfg = $ports[$name]
     $exe = Join-Path $root $cfg.path
     if ($IsWindows -and (Test-Path "$exe.exe")) { $exe = "$exe.exe" }
+    elseif ($IsWindows -and (Test-Path "$exe.bat")) { $exe = "$exe.bat" }  # e.g. Gradle start scripts
     if (-not (Test-Path $exe -PathType Leaf)) {
         Write-Host "MISSING ${name}: build with $($cfg.build)"
         $failedAny = $true
