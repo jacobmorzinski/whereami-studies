@@ -14,4 +14,9 @@ public sealed class CultureTests : IDisposable
     [Fact]
     public void HumanOutputIsInvariant() =>
         Assert.StartsWith("Location: 40.7128, -74.0060", Output.Human(new(40.7128, -74.0060, 0), null, true));
+
+    [Fact]
+    public void ParsingIsInvariant() =>
+        Assert.Equal(new Mode.Mock(new(40.7128, -74.006, 0)),
+            Assert.IsType<Parsed.Ok>(CommandLine.Parse(["--mock=40.7128,-74.006"])).Request.Mode);
 }
