@@ -5,7 +5,7 @@
 | rust | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | csharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | java | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
-| fsharp | ✅ | ✅ | 🟨 | ⬜ | ⬜ | ✅ |
+| fsharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | clojure | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
@@ -35,6 +35,5 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
   asks per app, and the app here is `java.exe`.
 - 2026-11-23 fsharp, Windows live: with location allowed, human and `--json`
   output both correct (same position as the Rust port), exit 0, nothing on
-  stderr. **Still to check by hand:** with *Let desktop apps access your
-  location* off, `fsharp/out/windows/whereami.exe --json` should print
-  `{"error":"permission_denied"}` and the denied message, exit 1. Then mark ✅.
+  stderr. With *Let desktop apps access your location* off: correct
+  permission-denied error (checked by hand).
