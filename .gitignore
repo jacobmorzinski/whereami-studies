@@ -1,4 +1,3 @@
-original/
 rust/target/
 csharp/**/bin/
 csharp/**/obj/
@@ -12,3 +11,5 @@ clojure/target/
 clojure/.cpcache/
 clojure/.clj-kondo/.cache/
 clojure/.nrepl-port
+.clj-kondo/
+.lsp/
