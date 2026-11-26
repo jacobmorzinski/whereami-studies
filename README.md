@@ -40,6 +40,17 @@ cargo build --release --manifest-path rust/Cargo.toml
 pwsh conformance/run.ps1 -Port rust
 ```
 
+On Linux (needs `bash` and `jq`; builds are in `conformance/ports.json`):
+
+```bash
+cargo build --release --manifest-path rust/Cargo.toml
+bash conformance/run.sh --port rust
+bash conformance/run.sh --port rust --cases-path conformance/runner-selftest.json   # runner self-test
+```
+
+`run.sh` uses each port's `linux` entry in `ports.json`; `run.ps1` uses the
+Windows (top-level) entries.
+
 `pwsh conformance/run.ps1` with no `-Port` checks every port listed in
 `conformance/ports.json`.
 
