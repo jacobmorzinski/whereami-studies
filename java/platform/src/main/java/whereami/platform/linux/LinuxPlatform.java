@@ -34,6 +34,9 @@ public final class LinuxPlatform implements Platform {
     /** {@code RequestedAccuracyLevel} for GeoClue's EXACT level (a D-Bus uint32). */
     private static final long ACCURACY_EXACT = 8;
 
+    /** How long dbus-java may keep trying to connect to the bus. */
+    private static final int CONNECT_TIMEOUT_MILLIS = 500;
+
     /** After the first fix, how long to keep listening for a better one. */
     private static final Duration BEST_FIX_WINDOW = Duration.ofMillis(250);
 
@@ -43,7 +46,11 @@ public final class LinuxPlatform implements Platform {
     @Override
     public Location getLocation(Duration timeout) throws LocationException {
         long deadline = System.nanoTime() + timeout.toNanos();
-        try (DBusConnection conn = DBusConnectionBuilder.forSystemBus().build()) {
+        try (DBusConnection conn = DBusConnectionBuilder.forSystemBus()
+                // dbus-java retries a failed connect for the whole transport timeout
+                // (default 10 s, in 500 ms steps); a missing bus should fail fast.
+                .transportConfig().withTimeout(CONNECT_TIMEOUT_MILLIS).back()
+                .build()) {
             return query(conn, deadline);
         } catch (DBusExecutionException e) {
             // dbus-java turns a D-Bus error name into an exception class (AccessDenied
@@ -52,6 +59,10 @@ public final class LinuxPlatform implements Platform {
             throw new LocationException(fromDbusErrorName(e.getClass().getName()));
         } catch (org.freedesktop.dbus.exceptions.DBusException | IOException e) {
             // No bus, no GeoClue service, malformed reply: nothing to locate with.
+            throw new LocationException(LocationError.LOCATION_UNAVAILABLE);
+        } catch (RuntimeException e) {
+            // dbus-java can throw unchecked exceptions too (e.g. from a malformed bus
+            // address); like Rust's Connection::system() errors, they mean no location.
             throw new LocationException(LocationError.LOCATION_UNAVAILABLE);
         }
     }
