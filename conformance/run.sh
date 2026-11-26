@@ -22,10 +22,14 @@ tmp=$(mktemp -d) || exit 2
 trap 'rm -rf "$tmp"' EXIT
 out=$tmp/out err=$tmp/err got=$tmp/got want=$tmp/want
 
-readarray -t cases < <(jq -c '.[]' "$cases_path") || exit 2
+cases_txt=$(jq -c '.[]' "$cases_path") || { echo "cannot read cases from $cases_path" >&2; exit 2; }
+[ -n "$cases_txt" ] || { echo "no cases in $cases_path" >&2; exit 2; }
+readarray -t cases <<<"$cases_txt"
 ports_json=$root/conformance/ports.json
 if [ "$port" = all ]; then
-    readarray -t names < <(jq -r 'keys_unsorted[]' "$ports_json")
+    names_txt=$(jq -r 'keys_unsorted[]' "$ports_json") || { echo "cannot read $ports_json" >&2; exit 2; }
+    [ -n "$names_txt" ] || { echo "no ports in $ports_json" >&2; exit 2; }
+    readarray -t names <<<"$names_txt"
 else
     names=("$port")
 fi
