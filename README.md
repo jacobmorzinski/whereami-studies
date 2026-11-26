@@ -40,7 +40,7 @@ cargo build --release --manifest-path rust/Cargo.toml
 pwsh conformance/run.ps1 -Port rust
 ```
 
-On Linux (needs `bash` and `jq`; builds are in `conformance/ports.json`):
+On Linux (needs `bash`, `jq`, GNU coreutils and `sed`; builds are in `conformance/ports.json`):
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml

@@ -9,12 +9,13 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 port=all
 cases_path=$root/spec/cases.json
 os=linux
+usage="usage: run.sh [--port NAME|all] [--cases-path FILE]"
 
 while [ $# -gt 0 ]; do
     case $1 in
-        --port) port=${2:?--port needs a value}; shift 2 ;;
-        --cases-path) cases_path=${2:?--cases-path needs a value}; shift 2 ;;
-        *) echo "usage: run.sh [--port NAME|all] [--cases-path FILE]" >&2; exit 2 ;;
+        --port) [ $# -ge 2 ] && [ -n "$2" ] || { echo "$usage" >&2; exit 2; }; port=$2; shift 2 ;;
+        --cases-path) [ $# -ge 2 ] && [ -n "$2" ] || { echo "$usage" >&2; exit 2; }; cases_path=$2; shift 2 ;;
+        *) echo "$usage" >&2; exit 2 ;;
     esac
 done
 
@@ -26,6 +27,7 @@ cases_txt=$(jq -c '.[]' "$cases_path") || { echo "cannot read cases from $cases_
 [ -n "$cases_txt" ] || { echo "no cases in $cases_path" >&2; exit 2; }
 readarray -t cases <<<"$cases_txt"
 ports_json=$root/conformance/ports.json
+jq empty "$ports_json" 2>/dev/null || { echo "cannot read $ports_json" >&2; exit 2; }
 if [ "$port" = all ]; then
     names_txt=$(jq -r 'keys_unsorted[]' "$ports_json") || { echo "cannot read $ports_json" >&2; exit 2; }
     [ -n "$names_txt" ] || { echo "no ports in $ports_json" >&2; exit 2; }
