@@ -14,7 +14,7 @@ every object, and poll async operations.
 | | |
 |---|---|
 | Windows | ✅ `Windows.Devices.Geolocation` by hand via FFM |
-| Linux | stub (planned: GeoClue2 via [`dbus-java`](https://github.com/hypfvieh/dbus-java)) |
+| Linux | ✅ GeoClue2 over D-Bus via [`dbus-java`](https://github.com/hypfvieh/dbus-java) (pure Java, no FFM) |
 | macOS | stub (planned: CoreLocation via FFM + the Objective-C runtime) |
 
 ## Build, run, test
@@ -26,12 +26,30 @@ java/gradlew.bat -p java test
 pwsh conformance/run.ps1 -Port java
 ```
 
+On Linux:
+
+```sh
+java/gradlew -p java :app:installDist
+java/app/build/install/whereami/bin/whereami --json
+java/gradlew -p java test
+bash conformance/run.sh --port java
+```
+
 `-p java` points Gradle at the `java/` folder from the repo root. While
 developing, `java/gradlew.bat -p java :app:run --args="--json"` builds and
 runs in one step.
 
 On Windows, live location needs *Settings → Privacy & security → Location*
 with *Location services* and *Let desktop apps access your location* on.
+
+On Linux, the location comes from GeoClue2. On GNOME, turn *Location
+Services* on in *Settings → Privacy*. Installing the desktop file is
+recommended (the original does the same), though an Ubuntu 26.04 GNOME session
+located without it. From the repo root:
+
+```sh
+cp assets/whereami.desktop ~/.local/share/applications/
+```
 
 ## Anatomy
 
@@ -51,13 +69,19 @@ Read the files in this order.
 - **[`gradle/libs.versions.toml`](gradle/libs.versions.toml)** is the
   *version catalog*: every library version in one place. Build files refer
   to them as `libs.picocli`, `libs.jackson.databind`, and so on.
+- **[`gradle.properties`](gradle.properties)** turns on the *configuration
+  cache*: Gradle saves the result of configuring the build and reuses it on
+  the next run, which makes repeat builds start faster.
 
 ### 2. The two `build.gradle.kts` files: library vs application
 
 - **[`platform/build.gradle.kts`](platform/build.gradle.kts)** applies the
   `java-library` plugin. The project holds the model, the `Platform`
   interface and the OS backends, with no CLI code, so the Clojure port can
-  depend on it later.
+  depend on it later. It has two kinds of dependency: `implementation` for
+  `dbus-java-core` (needed to compile and run, but not part of the library's
+  public API) and `runtimeOnly` for the `dbus-java` transport (the code never
+  names it; dbus-java finds it when it connects).
 - **[`app/build.gradle.kts`](app/build.gradle.kts)** applies `application`.
   It depends on `project(":platform")`, picocli and Jackson. `installDist`
   produces `app/build/install/whereami/`: a `lib/` folder of jars plus the
@@ -71,6 +95,10 @@ Read the files in this order.
     "restricted". Without this flag the JVM prints a warning on first use.
   - `-Dstdout.encoding=UTF-8`: otherwise Java writes in the console's code
     page (437 here). That's the Java version of C#'s `Console.OutputEncoding`.
+- **`runtimeOnly(libs.slf4j.nop)`**: dbus-java logs through SLF4J. With no
+  SLF4J provider on the classpath SLF4J prints a warning on stderr, which
+  would break the rule that stderr holds only the error text. `slf4j-nop`
+  is a provider that discards every log message.
 - **No `module-info.java`.** Java modules would need `opens` declarations so
   picocli and Jackson can use reflection, and they teach nothing about OS
   calls. The app runs on the plain classpath.
@@ -180,6 +208,7 @@ return result.get(timeout.toMillis(), MILLISECONDS);
 ```java
 return switch (osName()) {          // from System.getProperty("os.name")
     case "windows" -> new WindowsPlatform();
+    case "linux" -> new LinuxPlatform();
     default -> new UnsupportedPlatform();
 };
 ```
@@ -189,7 +218,8 @@ leave other OSes' code out of the build; in Java every backend is compiled
 on every OS, and the choice is made only at run time. That works because
 nothing native is loaded until it's used: `WinRt` looks up `combase.dll` in a
 holder class the first time a function is called, so on Linux it is never
-touched.
+touched. The same goes for `LinuxPlatform`: dbus-java is only used inside
+`getLocation`, so Windows never starts it.
 
 ### 9. [`windows/`](platform/src/main/java/whereami/platform/windows/WindowsPlatform.java): calling the OS by hand
 
@@ -246,13 +276,89 @@ Memory and lifetimes are explicit, as in Zig:
 | Async | poll `GetStatus` in a loop | `.join()` (blocking) | `await …AsTask(ct)` | poll `get_Status` in a loop |
 | Failure | check each `HRESULT` | `?` → `windows::core::Error` | exceptions | `Com.check(hr)` → `WinRtException` → `LocationException` |
 
-## What Linux and macOS will need
+### 10. [`linux/`](platform/src/main/java/whereami/platform/linux/LinuxPlatform.java): D-Bus through a library
 
-- **Linux**: [`dbus-java`](https://github.com/hypfvieh/dbus-java) talks to
-  GeoClue2 over the system bus. It needs `Manager.CreateClient`, then setting
-  `DesktopId` and `RequestedAccuracyLevel`, then `Client.Start` and waiting
-  for `LocationUpdated` (see [`linux.zig`](../original/whereami/src/platform/linux.zig)).
-  It's pure Java, so there's no FFM here.
+Windows needed hand-written FFM; Linux doesn't. GeoClue2 is a service on the
+system D-Bus, and [`dbus-java`](https://github.com/hypfvieh/dbus-java) is a
+pure-Java client for it (its `native-unixsocket` transport uses the JDK's own
+Unix domain sockets). So the backend is two small files and no native code.
+It makes the same conversation as
+[`linux.zig`](../original/whereami/src/platform/linux.zig) and the Rust
+`zbus` code.
+
+- **[`GeoClue`](platform/src/main/java/whereami/platform/linux/GeoClue.java)**
+  describes the part of GeoClue2's API we use as Java interfaces.
+  - `Manager` and `Client` extend `DBusInterface`. dbus-java builds a *proxy*
+    object for an interface at run time: calling `manager.CreateClient()` sends
+    a D-Bus method call and returns the reply. Method names are capitalised
+    like the D-Bus methods, not like Java.
+  - `@DBusInterfaceName` gives the real D-Bus interface name.
+  - `@MethodNoReply` on `Stop()` means "don't wait for an answer".
+  - `Client.LocationUpdated` is a class extending `DBusSignal`, nested inside
+    the interface it belongs to, which is how dbus-java ties a signal to its
+    interface. Its two arguments are *object paths* (`DBusPath`) of `Location`
+    objects, not coordinates.
+- **`Properties`**: `org.freedesktop.dbus.interfaces.Properties` is dbus-java's
+  built-in interface for `org.freedesktop.DBus.Properties`. `Set` writes
+  `DesktopId` and `RequestedAccuracyLevel`, and `Get` reads a fix's
+  `Latitude`, `Longitude` and `Accuracy`. The accuracy level must be sent as a
+  D-Bus `uint32`, so it is wrapped in `new UInt32(8)` (GeoClue's EXACT level);
+  a plain Java `long` would be sent as a different type.
+- **Subscribe, then `Start`.** `addSigHandler` registers a lambda for
+  `LocationUpdated` before `Start()` is called, so the first fix can't slip
+  past. Passing the client's remote object limits the match to that client's
+  path. The handler runs on a dbus-java thread, so it only reads the
+  fix (the `Location` properties) and queues it on a `LinkedBlockingQueue`;
+  selection happens on the calling thread. A fix whose properties can't be read is dropped, not
+  turned into accuracy 0, which would always look best.
+- **The queue and the best-fix window.** The calling thread waits on the queue
+  with `poll(timeout)`. [`bestFix`](platform/src/main/java/whereami/platform/linux/LinuxPlatform.java)
+  takes the first fix, keeps listening for 250 ms more (never past the
+  deadline), and returns the smallest `accuracy`, the earlier on a tie. GeoClue
+  can send a coarse IP fix and then a precise one a few milliseconds later; the
+  original takes whichever comes first. The window is the same extension as
+  in the Rust port. `bestFix` is a plain function of a queue, so
+  [`LinuxPlatformTest`](platform/src/test/java/whereami/platform/linux/LinuxPlatformTest.java)
+  tests it without a bus. `Stop` is sent in a `finally`, on every path.
+- **Errors.** dbus-java turns a D-Bus error name such as
+  `org.freedesktop.DBus.Error.AccessDenied` into an exception *class*
+  (`org.freedesktop.dbus.errors.AccessDenied`, a `DBusExecutionException`).
+  The code maps that class name: containing `AccessDenied` is
+  `permission_denied`; any other name, or an exception with no class of its
+  own, is `location_unavailable`. (`DBusExecutionException.getType()` returns
+  the same string but is deprecated.) The more specific catch must come first
+  (the compiler enforces it, since `DBusExecutionException` is a
+  `RuntimeException`): `DBusExecutionException`, then
+  `DBusException | IOException`, then `RuntimeException`. The last one
+  catches anything unchecked dbus-java throws, so no stack trace can reach
+  stderr.
+- **Connecting.** `DBusConnection` is `AutoCloseable`, so try-with-resources
+  closes it. By default dbus-java retries a failed connect for 10 s, and a
+  machine with no bus took about 9.8 s to fail. `transportConfig().withTimeout(500)`
+  cuts that to 500 ms; it bounds only connecting, not method calls. The overall
+  deadline still applies to waiting for a fix, with 50 ms held back for `Stop`
+  and exit.
+- **No geocoder.** `reverseGeocode` returns an empty `Optional` and `geocode`
+  throws `platform_unsupported`, as in the other ports. GeoClue has none.
+- **The desktop file.** `DesktopId` is `whereami`, which GeoClue matches with
+  [`assets/whereami.desktop`](../assets/whereami.desktop). That file lives at
+  the repo root, not in this port, because every port shares it.
+
+| | Zig ([`linux.zig`](../original/whereami/src/platform/linux.zig)) | Rust | Java ([`linux/`](platform/src/main/java/whereami/platform/linux/LinuxPlatform.java)) |
+|---|---|---|---|
+| D-Bus | libdbus C calls | `zbus` blocking proxies | `dbus-java` interface proxies |
+| Subscribing | `dbus_bus_add_match` rule, then pop messages | `receive_location_updated()` iterator, read on its own thread | `addSigHandler` + `LinkedBlockingQueue` |
+| Waiting | `read_write_dispatch` loop in 1 s steps until the timeout | reader thread feeds an `mpsc` channel; `best_fix` waits with `recv_timeout` | `queue.poll(timeout)` in `bestFix` |
+| Failure | check the error after `Start` (`AccessDenied` is permission denied, else unavailable) | D-Bus error name from `zbus::Error`, mapped | exception class name, mapped |
+| Cleanup | explicit `Stop` calls + `defer` unref of messages | explicit no-reply `stop()`; `Drop` closes the connection | explicit no-reply `Stop()` in `finally`; try-with-resources closes the connection |
+
+Live check, Ubuntu 26.04 GNOME, GeoClue 2.7.2, static source: location on
+gave the position and `Accuracy: 10m`, exit 0, in about 0.77 s (mostly JVM
+start); with GNOME location off it gave `permission_denied`, exit 1; with the
+desktop file removed it still located.
+
+## What macOS will need
+
 - **macOS**: by hand again. FFM calls into `libobjc` (`objc_getClass`,
   `sel_registerName`, `objc_msgSend`) to drive `CLLocationManager` and
   `CLGeocoder`. The delegate callbacks would be upcall stubs registered as an

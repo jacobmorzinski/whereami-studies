@@ -9,6 +9,9 @@ repositories {
 }
 
 dependencies {
+    implementation(libs.dbus.java.core)
+    runtimeOnly(libs.dbus.java.transport)
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.launcher)

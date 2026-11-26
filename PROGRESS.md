@@ -4,7 +4,7 @@
 |---|---|---|---|---|---|---|
 | rust | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
 | csharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
-| java | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
+| java | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
 | fsharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | clojure | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 
@@ -66,3 +66,12 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
   checked the Rust Windows code (clean). This cross-check is a short-term aid
   during Linux development; long term, platforms should be optional (building
   on Linux shouldn't need the Windows target).
+- 2026-11-26 java, Linux live (Ubuntu 26.04 GNOME, GeoClue 2.7.2, static
+  source 42.3958, -71.1473; dbus-java 5.2.2): location on gives
+  `Location: 42.3958, -71.1473` / `Accuracy: 10m`, `--json` the same position,
+  exit 0, stderr empty, about 0.77 s (mostly JVM start). With GNOME location
+  services off: `{"error":"permission_denied"}` + `Error: location permission
+  denied.`, exit 1, about 0.36 s. With the desktop file removed it still
+  located, exit 0, no GNOME prompt. The Clojure uberjar passed the same three
+  checks through the Java platform (about 1.05 s, 0.81 s); its Linux column
+  stays open until its docs milestone.
