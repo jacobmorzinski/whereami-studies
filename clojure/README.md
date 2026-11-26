@@ -13,7 +13,7 @@ that layer is Clojure: plain data (maps, keywords), functions, and
 | | |
 |---|---|
 | Windows | ✅ the Java port's `WindowsPlatform` (FFM + WinRT by hand), called through interop |
-| Linux | stub; arrives when the Java `platform` project gets a Linux backend |
+| Linux | the Java port's `LinuxPlatform` (GeoClue2 via dbus-java), called through interop; checked live, docs to come |
 | macOS | stub; the same, plus an `.app` bundle |
 
 ## Build, run, test
@@ -170,8 +170,15 @@ This namespace is where Java values become Clojure data:
 
 ## What Linux and macOS will need
 
-Nothing in this folder, beyond rebuilding `platform.jar`. When the Java
-`platform` project gets a Linux backend (`dbus-java`) or a macOS one (FFM and
-the Objective-C runtime), `Platforms/nativePlatform` returns it and this port
-uses it unchanged. On macOS, CoreLocation also needs an `.app` bundle around
+**Linux** needed one change here, in [`deps.edn`](deps.edn). `platform.jar` is
+a bare `:local/root` jar, so its Maven dependencies don't come with it. The
+Linux backend needs `dbus-java` and, at runtime, a `native-unixsocket`
+transport and `slf4j-nop` (which stops SLF4J printing a warning on stderr), so
+`deps.edn` lists all three. Their versions are kept in step with the Java
+port's `gradle/libs.versions.toml` by hand.
+
+**macOS**: nothing in this folder, beyond rebuilding `platform.jar`. When the
+Java `platform` project gets a macOS backend (FFM and the Objective-C
+runtime), `Platforms/nativePlatform` returns it and this port uses it
+unchanged. On macOS, CoreLocation also needs an `.app` bundle around
 the JVM.
