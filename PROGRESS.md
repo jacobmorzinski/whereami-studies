@@ -42,3 +42,4 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
   (same position as the Rust port), exit 0, nothing on stderr (no FFM
   warning: the jar manifest enables native access). With *Let desktop apps access your location* off:
   correct permission-denied error (checked by hand).
+- 2026-11-26 all ports: build and pass mock/usage conformance on Linux (Ubuntu 26.04) via conformance/run.sh.

@@ -2,27 +2,64 @@
   "rust": {
     "path": "rust/target/release/whereami",
     "build": "cargo build --release --manifest-path rust/Cargo.toml",
-    "features": { "completions": false }
+    "features": {
+      "completions": false
+    },
+    "linux": {
+      "path": "rust/target/release/whereami",
+      "build": "cargo build --release --manifest-path rust/Cargo.toml"
+    }
   },
   "csharp": {
     "path": "csharp/out/windows/whereami",
     "build": "dotnet publish csharp/src/Whereami -c Release -f net10.0-windows10.0.19041.0 -o csharp/out/windows",
-    "features": { "completions": false }
+    "features": {
+      "completions": false
+    },
+    "linux": {
+      "path": "csharp/out/linux/whereami",
+      "build": "dotnet publish csharp/src/Whereami -c Release -f net10.0 -o csharp/out/linux"
+    }
   },
   "java": {
     "path": "java/app/build/install/whereami/bin/whereami",
     "build": "java/gradlew.bat -p java :app:installDist",
-    "features": { "completions": false }
+    "features": {
+      "completions": false
+    },
+    "linux": {
+      "path": "java/app/build/install/whereami/bin/whereami",
+      "build": "java/gradlew -p java :app:installDist"
+    }
   },
   "fsharp": {
     "path": "fsharp/out/windows/whereami",
     "build": "dotnet publish fsharp/src/Whereami -c Release -f net10.0-windows10.0.19041.0 -o fsharp/out/windows",
-    "features": { "completions": false }
+    "features": {
+      "completions": false
+    },
+    "linux": {
+      "path": "fsharp/out/linux/whereami",
+      "build": "dotnet publish fsharp/src/Whereami -c Release -f net10.0 -o fsharp/out/linux"
+    }
   },
   "clojure": {
     "path": "clojure/target/whereami.jar",
-    "launcher": ["java", "-jar"],
+    "launcher": [
+      "java",
+      "-jar"
+    ],
     "build": "java/gradlew.bat -p java :platform:jar; Push-Location clojure; clojure -T:build uber; Pop-Location",
-    "features": { "completions": false }
+    "features": {
+      "completions": false
+    },
+    "linux": {
+      "path": "clojure/target/whereami.jar",
+      "launcher": [
+        "java",
+        "-jar"
+      ],
+      "build": "java/gradlew -p java :platform:jar && (cd clojure && clojure -T:build uber)"
+    }
   }
 }
