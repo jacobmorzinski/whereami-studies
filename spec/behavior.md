@@ -85,3 +85,10 @@ Message on stderr. With `--json`, also `{"error":"<key>"}` on stdout.
 | Windows | `Windows.Devices.Geolocation.Geolocator` | none | unsupported |
 | Linux | GeoClue2 over system D-Bus | none | unsupported |
 | macOS | CoreLocation | `CLGeocoder` | `CLGeocoder` |
+
+**Linux fix selection *(extension)*.** GeoClue2 can send several
+`LocationUpdated` signals in quick succession (for example a coarse
+network/IP fix, then a precise one milliseconds later). The original returns
+the first. Ports wait **250 ms** after the first update and return the most
+accurate fix seen (smallest `Accuracy`; on a tie, the earlier one). The whole
+request is still bounded by the 10 s timeout.
