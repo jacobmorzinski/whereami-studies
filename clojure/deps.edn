@@ -5,7 +5,13 @@
         org.clojure/data.json {:mvn/version "2.5.2"}
         ;; The OS layer: the Java port's platform project, as a jar.
         ;; Build it first with: java/gradlew.bat -p java :platform:jar
-        whereami/platform {:local/root "../java/platform/build/libs/platform.jar"}}
+        whereami/platform {:local/root "../java/platform/build/libs/platform.jar"}
+        ;; The platform jar is a bare :local/root jar, so its Maven
+        ;; dependencies do not come along: list the Linux (GeoClue2 over
+        ;; D-Bus) runtime here. Keep versions in step with java/gradle/libs.versions.toml.
+        com.github.hypfvieh/dbus-java-core {:mvn/version "5.2.2"}
+        com.github.hypfvieh/dbus-java-transport-native-unixsocket {:mvn/version "5.2.2"}
+        org.slf4j/slf4j-nop {:mvn/version "2.0.17"}}
 
  :aliases
  {;; clojure -X:test
