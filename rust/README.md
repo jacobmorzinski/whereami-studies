@@ -12,6 +12,8 @@ by [`spec/behavior.md`](../spec/behavior.md).
 
 ## Build, run, test
 
+Windows (PowerShell):
+
 ```powershell
 cargo build --release --manifest-path rust/Cargo.toml
 rust/target/release/whereami.exe --json
@@ -19,8 +21,21 @@ cargo test --manifest-path rust/Cargo.toml
 pwsh conformance/run.ps1 -Port rust
 ```
 
+Linux (`sh`):
+
+```sh
+cargo build --release --manifest-path rust/Cargo.toml
+rust/target/release/whereami --json
+cargo test --manifest-path rust/Cargo.toml
+bash conformance/run.sh --port rust
+```
+
 On Windows, live location needs *Settings → Privacy & security → Location*
 with *Location services* and *Let desktop apps access your location* on.
+
+On Linux (GNOME), turn on *Settings → Privacy → Location Services* and install
+the desktop file from the repo root:
+`cp assets/whereami.desktop ~/.local/share/applications/`.
 
 ## Anatomy
 
@@ -48,7 +63,7 @@ never downloads it. The `windows` crate is Microsoft's generated binding to
 behind a feature flag. You turn on just the ones you use:
 `Windows.Devices.Geolocation` → `Devices_Geolocation`.
 
-Linux gets its own table the same way:
+Linux gets its own table the same way (`cfg(windows)` and `cfg(target_os = "windows")` are equivalent spellings, as are the Linux forms):
 
 ```toml
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -186,7 +201,7 @@ proxies hide the rest. The conversation:
    Subscribing first means the first fix can't arrive before anyone is listening.
 4. `LocationUpdated` carries the path of a `Location` object. Read its
    `Latitude`, `Longitude` and `Accuracy` properties.
-5. Send `Stop`, without waiting for the reply.
+5. Send `Stop`, without waiting for the reply. This happens on every path, including a timeout.
 
 **Typed proxies.** Each D-Bus interface is a trait with an attribute:
 
@@ -198,6 +213,8 @@ proxies hide the rest. The conversation:
 )]
 trait Client {
     fn start(&self) -> zbus::Result<()>;
+    #[zbus(no_reply)]
+    fn stop(&self) -> zbus::Result<()>;
     #[zbus(property)]
     fn set_desktop_id(&self, id: &str) -> zbus::Result<()>;
     #[zbus(signal)]
@@ -206,7 +223,7 @@ trait Client {
 ```
 
 The macro writes a `ClientProxy` struct whose methods make the D-Bus calls.
-`#[zbus(property)]` turns `set_desktop_id` into a property write, and
+`#[zbus(no_reply)]` makes `stop` a fire-and-forget call, `#[zbus(property)]` turns `set_desktop_id` into a property write, and
 `#[zbus(signal)]` generates `receive_location_updated()`. There are three
 proxies (`Manager`, `Client`, `GeoLocation`); `Client` and `GeoLocation` have
 no fixed path, so each is built with `.path(...)` from what GeoClue returned.
@@ -224,8 +241,12 @@ filtering by hand.
 `get_location` runs the whole conversation through `platform::with_timeout`
 (the same helper as Windows) and computes one `deadline` from the overall
 timeout. A reader thread turns each signal into a `Location` and sends it over
-an `mpsc` channel; `best_fix` receives from it. `best_fix` stops early enough
-to leave `DEADLINE_MARGIN` (50 ms) for `Stop` and exit.
+an `mpsc` channel; `best_fix` receives from it, and even its wait for the first fix is
+bounded: it stops `DEADLINE_MARGIN` (50 ms) before the deadline to leave room
+for `Stop` and exit. If no fix has arrived by then, `query` sends `Stop` and
+returns a timeout error; if the reader thread ended instead, the error is
+location unavailable. The reader thread silently skips updates whose
+properties can't be read, keeping the best fix so far.
 
 **Best-fix window (an extension).** The original returns the first
 `LocationUpdated`. On the machine used for development, GeoClue sent a coarse
@@ -249,7 +270,7 @@ keeps `map_dbus_error_name` a plain function that is easy to unit test.
 GeoClue has no geocoder.
 
 **The desktop file.** `DesktopId` names an app GeoClue can look up. The repo
-ships [`assets/whereami.desktop`](../assets/whereami.desktop); install it with
+ships [`assets/whereami.desktop`](../assets/whereami.desktop); install it, from the repo root, with
 
 ```sh
 cp assets/whereami.desktop ~/.local/share/applications/

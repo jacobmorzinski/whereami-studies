@@ -9,11 +9,10 @@
 
 use super::Platform;
 use crate::model::{Address, GeocodeResult, Location, LocationError};
-use std::sync::mpsc::{self, Receiver};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 use zbus::DBusError;
 use zbus::blocking::Connection;
-use zbus::proxy::MethodFlags;
 use zbus::zvariant::OwnedObjectPath;
 
 pub struct Linux;
@@ -38,6 +37,10 @@ trait Manager {
 )]
 trait Client {
     fn start(&self) -> zbus::Result<()>;
+
+    /// Fire and forget: `no_reply` sends the call without waiting for an answer.
+    #[zbus(no_reply)]
+    fn stop(&self) -> zbus::Result<()>;
 
     #[zbus(property)]
     fn set_desktop_id(&self, id: &str) -> zbus::Result<()>;
@@ -91,16 +94,22 @@ const DEADLINE_MARGIN: Duration = Duration::from_millis(50);
 
 /// Wait for the first fix, then keep listening for `grace` (but never past
 /// `deadline`) and return the most accurate one seen (smallest `accuracy`; on a
-/// tie, the earlier). `None` if the sender goes away before any fix arrives.
-fn best_fix(updates: &Receiver<Location>, grace: Duration, deadline: Instant) -> Option<Location> {
-    let mut best = updates.recv().ok()?;
+/// tie, the earlier). The first wait is bounded by `deadline` too. Errors:
+/// `Timeout` means no fix arrived by the deadline; `Disconnected` means the
+/// sender went away (the reader thread ended) before any fix arrived.
+fn best_fix(
+    updates: &Receiver<Location>,
+    grace: Duration,
+    deadline: Instant,
+) -> Result<Location, RecvTimeoutError> {
+    let mut best = updates.recv_timeout(deadline.saturating_duration_since(Instant::now()))?;
     let end = (Instant::now() + grace).min(deadline);
     while let Ok(fix) = updates.recv_timeout(end.saturating_duration_since(Instant::now())) {
         if fix.accuracy < best.accuracy {
             best = fix;
         }
     }
-    Some(best)
+    Ok(best)
 }
 
 fn query(deadline: Instant) -> Result<Location, LocationError> {
@@ -129,6 +138,8 @@ fn query(deadline: Instant) -> Result<Location, LocationError> {
                 .args()
                 .map_err(map_zbus_error)
                 .and_then(|args| read_location(&reader_conn, args.new));
+            // A fix with unreadable properties is dropped, not defaulted: an
+            // accuracy of 0 would always win `best_fix`.
             if let Ok(fix) = fix {
                 if tx.send(fix).is_err() {
                     break;
@@ -139,9 +150,13 @@ fn query(deadline: Instant) -> Result<Location, LocationError> {
     client.start().map_err(map_zbus_error)?;
 
     let result = best_fix(&rx, BEST_FIX_WINDOW, deadline - DEADLINE_MARGIN)
-        .ok_or(LocationError::LocationUnavailable);
-    // Best effort, and without waiting for a reply so it can't eat the budget.
-    let _ = client.inner().call_with_flags::<_, _, ()>("Stop", MethodFlags::NoReplyExpected.into(), &());
+        .map_err(|e| match e {
+            RecvTimeoutError::Timeout => LocationError::Timeout,
+            RecvTimeoutError::Disconnected => LocationError::LocationUnavailable,
+        });
+    // Best effort (the proxy method is `no_reply`), sent on every path
+    // including timeout.
+    let _ = client.stop();
     result
 }
 
@@ -221,7 +236,7 @@ mod tests {
         tx.send(fix(5.0)).unwrap();
         let start = Instant::now();
         let deadline = start + Duration::from_millis(30);
-        assert_eq!(best_fix(&rx, Duration::from_millis(250), deadline), Some(fix(5.0)));
+        assert_eq!(best_fix(&rx, Duration::from_millis(250), deadline), Ok(fix(5.0)));
         assert!(start.elapsed() < Duration::from_millis(150), "waited {:?}", start.elapsed());
         drop(tx);
     }
@@ -235,7 +250,7 @@ mod tests {
         let (tx, rx) = mpsc::channel();
         tx.send(fix(25000.0)).unwrap();
         tx.send(fix(10.0)).unwrap();
-        assert_eq!(best_fix(&rx, Duration::from_millis(20), far()), Some(fix(10.0)));
+        assert_eq!(best_fix(&rx, Duration::from_millis(20), far()), Ok(fix(10.0)));
     }
 
     #[test]
@@ -243,7 +258,9 @@ mod tests {
         let (tx, rx) = mpsc::channel();
         tx.send(fix(5.0)).unwrap();
         let start = Instant::now();
-        assert_eq!(best_fix(&rx, Duration::from_millis(50), far()), Some(fix(5.0)));
+        let grace = Duration::from_millis(50);
+        assert_eq!(best_fix(&rx, grace, far()), Ok(fix(5.0)));
+        assert!(start.elapsed() >= grace, "returned early after {:?}", start.elapsed());
         assert!(start.elapsed() < Duration::from_secs(1), "waited {:?}", start.elapsed());
         drop(tx);
     }
@@ -255,7 +272,7 @@ mod tests {
         let second = Location { latitude: 2.0, longitude: 2.0, accuracy: 10.0 };
         tx.send(first).unwrap();
         tx.send(second).unwrap();
-        assert_eq!(best_fix(&rx, Duration::from_millis(20), far()), Some(first));
+        assert_eq!(best_fix(&rx, Duration::from_millis(20), far()), Ok(first));
     }
 
     #[test]
@@ -263,10 +280,10 @@ mod tests {
         let (tx, rx) = mpsc::channel();
         tx.send(fix(100.0)).unwrap();
         let late = std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_millis(80));
+            std::thread::sleep(Duration::from_millis(200));
             let _ = tx.send(fix(1.0));
         });
-        assert_eq!(best_fix(&rx, Duration::from_millis(50), far()), Some(fix(100.0)));
+        assert_eq!(best_fix(&rx, Duration::from_millis(20), far()), Ok(fix(100.0)));
         late.join().unwrap();
     }
 
@@ -274,6 +291,17 @@ mod tests {
     fn best_fix_none_when_sender_dropped() {
         let (tx, rx) = mpsc::channel::<Location>();
         drop(tx);
-        assert_eq!(best_fix(&rx, Duration::from_millis(20), far()), None);
+        assert_eq!(best_fix(&rx, Duration::from_millis(20), far()), Err(RecvTimeoutError::Disconnected));
+    }
+
+    #[test]
+    fn best_fix_times_out_without_a_fix() {
+        let (tx, rx) = mpsc::channel::<Location>();
+        let start = Instant::now();
+        let deadline = start + Duration::from_millis(40);
+        assert_eq!(best_fix(&rx, Duration::from_millis(250), deadline), Err(RecvTimeoutError::Timeout));
+        assert!(start.elapsed() >= Duration::from_millis(40), "returned early after {:?}", start.elapsed());
+        assert!(start.elapsed() < Duration::from_millis(500), "waited {:?}", start.elapsed());
+        drop(tx);
     }
 }

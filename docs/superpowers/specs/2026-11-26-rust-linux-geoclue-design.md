@@ -50,10 +50,12 @@ other ports' Linux backends.
 - Whole request runs under the existing `platform::with_timeout` (10 s total),
   like the Windows backend — unlike the original, whose per-call 5 s limits
   could add past 10 s.
-- Errors: no system bus / `CreateClient` fails → `location_unavailable`; any
-  D-Bus error whose name contains `AccessDenied` → `permission_denied`; other
-  D-Bus failures → `location_unavailable`; no update in time → `timeout`. The
-  name → error mapping is a pure function with unit tests.
+- Errors: no system bus / non-AccessDenied failures (incl. `CreateClient`) →
+  `location_unavailable`; any D-Bus error whose name contains `AccessDenied`
+  (including from `CreateClient`) → `permission_denied`; no fix by the deadline
+  → `timeout` (after sending `Stop`). Note: the original maps every
+  `CreateClient` failure to `location_unavailable`. The name → error mapping is
+  a pure function with unit tests.
 - Reverse geocode → `None`; geocode → `PlatformUnsupported` (unchanged).
 - **Desktop file (user's change):** copy the original's
   `assets/whereami.desktop` to `assets/whereami.desktop` at this repo's root,
