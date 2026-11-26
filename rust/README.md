@@ -48,6 +48,17 @@ never downloads it. The `windows` crate is Microsoft's generated binding to
 behind a feature flag. You turn on just the ones you use:
 `Windows.Devices.Geolocation` → `Devices_Geolocation`.
 
+Linux gets its own table the same way:
+
+```toml
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = "5"
+```
+
+`zbus` is the D-Bus client used to reach GeoClue2 (see section 9), and it is
+only built on Linux. It's pinned to major version 5 because zbus 6 dropped
+the blocking API the backend uses.
+
 `Cargo.lock` (committed) records the exact versions resolved, so builds are
 reproducible.
 
@@ -116,13 +127,17 @@ missing case.
 The `Platform` trait (an interface) has three methods. Then:
 
 ```rust
+#[cfg(target_os = "linux")]
+mod linux;
 #[cfg(target_os = "windows")]
 mod windows;
 ```
 
 `#[cfg(...)]` is conditional compilation. On Linux the `windows` module isn't
-just unused; it doesn't exist. `native()` returns the right implementation
-the same way. Picking the OS costs nothing at runtime, and code for other
+just unused; it doesn't exist, and on Windows the same is true of `linux`.
+`native()` returns the right implementation the same way: `Windows` on
+Windows, `Linux` on Linux, and an `Unsupported` stub (macOS for now)
+everywhere else. Picking the OS costs nothing at runtime, and code for other
 OSes can't break your build. `VERSION` is spelled out per OS because
 `concat!` only takes literals.
 
