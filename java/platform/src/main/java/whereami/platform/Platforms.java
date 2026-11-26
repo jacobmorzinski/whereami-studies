@@ -1,5 +1,6 @@
 package whereami.platform;
 
+import whereami.platform.linux.LinuxPlatform;
 import whereami.platform.windows.WindowsPlatform;
 
 /**
@@ -25,6 +26,7 @@ public final class Platforms {
     public static Platform nativePlatform() {
         return switch (osName()) {
             case "windows" -> new WindowsPlatform();
+            case "linux" -> new LinuxPlatform();
             default -> new UnsupportedPlatform();
         };
     }

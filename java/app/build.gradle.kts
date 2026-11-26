@@ -11,6 +11,8 @@ dependencies {
     implementation(project(":platform"))
     implementation(libs.picocli)
     implementation(libs.jackson.databind)
+    // dbus-java logs through SLF4J; with no provider SLF4J warns on stderr.
+    runtimeOnly(libs.slf4j.nop)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
