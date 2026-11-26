@@ -50,12 +50,17 @@ public final class LinuxPlatform implements Platform {
                 // dbus-java retries a failed connect for the whole transport timeout
                 // (default 10 s, in 500 ms steps); a missing bus should fail fast.
                 .transportConfig().withTimeout(CONNECT_TIMEOUT_MILLIS).back()
+                // The default is a per-process cached, refcounted connection; an
+                // abandoned worker's connection and handler must not be reused.
+                .withShared(false)
                 .build()) {
             return query(conn, deadline);
         } catch (DBusExecutionException e) {
             // dbus-java turns a D-Bus error name into an exception class (AccessDenied
             // for org.freedesktop.DBus.Error.AccessDenied); that class name is the
-            // name we map. (getType() says the same but is marked for removal.)
+            // name we map. Names dbus-java has no class for arrive as a plain
+            // DBusExecutionException and map to unavailable (accepted gap: GeoClue
+            // sends the standard AccessDenied). (getType() says the same but is marked for removal.)
             throw new LocationException(fromDbusErrorName(e.getClass().getName()));
         } catch (org.freedesktop.dbus.exceptions.DBusException | IOException e) {
             // No bus, no GeoClue service, malformed reply: nothing to locate with.

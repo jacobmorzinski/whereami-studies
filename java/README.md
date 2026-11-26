@@ -307,9 +307,9 @@ It makes the same conversation as
 - **Subscribe, then `Start`.** `addSigHandler` registers a lambda for
   `LocationUpdated` before `Start()` is called, so the first fix can't slip
   past. Passing the client's remote object limits the match to that client's
-  path. The handler runs on a dbus-java thread, so it does not compute
-  anything: it reads the `Location` properties and puts the result on a
-  `LinkedBlockingQueue`. A fix whose properties can't be read is dropped, not
+  path. The handler runs on a dbus-java thread, so it only reads the
+  fix (the `Location` properties) and queues it on a `LinkedBlockingQueue`;
+  selection happens on the calling thread. A fix whose properties can't be read is dropped, not
   turned into accuracy 0, which would always look best.
 - **The queue and the best-fix window.** The calling thread waits on the queue
   with `poll(timeout)`. [`bestFix`](platform/src/main/java/whereami/platform/linux/LinuxPlatform.java)
@@ -326,8 +326,9 @@ It makes the same conversation as
   The code maps that class name: containing `AccessDenied` is
   `permission_denied`; any other name, or an exception with no class of its
   own, is `location_unavailable`. (`DBusExecutionException.getType()` returns
-  the same string but is deprecated.) The catch order matters, since Java
-  takes the first matching `catch`: `DBusExecutionException`, then
+  the same string but is deprecated.) The more specific catch must come first
+  (the compiler enforces it, since `DBusExecutionException` is a
+  `RuntimeException`): `DBusExecutionException`, then
   `DBusException | IOException`, then `RuntimeException`. The last one
   catches anything unchecked dbus-java throws, so no stack trace can reach
   stderr.

@@ -25,6 +25,13 @@ class LinuxPlatformTest {
     }
 
     @Test
+    void dbusJavaExceptionClassNameMapsToDenied() {
+        assertEquals(LocationError.PERMISSION_DENIED,
+                LinuxPlatform.fromDbusErrorName(
+                        new org.freedesktop.dbus.errors.AccessDenied("x").getClass().getName()));
+    }
+
+    @Test
     void accessDenied() {
         assertEquals(LocationError.PERMISSION_DENIED,
                 LinuxPlatform.fromDbusErrorName("org.freedesktop.DBus.Error.AccessDenied"));
