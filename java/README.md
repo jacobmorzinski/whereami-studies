@@ -346,10 +346,10 @@ It makes the same conversation as
 | | Zig ([`linux.zig`](../original/whereami/src/platform/linux.zig)) | Rust | Java ([`linux/`](platform/src/main/java/whereami/platform/linux/LinuxPlatform.java)) |
 |---|---|---|---|
 | D-Bus | libdbus C calls | `zbus` blocking proxies | `dbus-java` interface proxies |
-| Subscribing | match rule + message loop | signal stream | `addSigHandler` + `LinkedBlockingQueue` |
-| Waiting | loop with a deadline | iterate with a deadline | `queue.poll(timeout)` |
-| Failure | check each reply | D-Bus error name | exception class name |
-| Cleanup | `defer` | `Drop` | `finally` and try-with-resources |
+| Subscribing | `dbus_bus_add_match` rule, then pop messages | `receive_location_updated()` iterator, read on its own thread | `addSigHandler` + `LinkedBlockingQueue` |
+| Waiting | `read_write_dispatch` loop in 1 s steps until the timeout | reader thread feeds an `mpsc` channel; `best_fix` waits with `recv_timeout` | `queue.poll(timeout)` in `bestFix` |
+| Failure | check the error after `Start` (`AccessDenied` is permission denied, else unavailable) | D-Bus error name from `zbus::Error`, mapped | exception class name, mapped |
+| Cleanup | explicit `Stop` calls + `defer` unref of messages | explicit no-reply `stop()`; `Drop` closes the connection | explicit no-reply `Stop()` in `finally`; try-with-resources closes the connection |
 
 Live check, Ubuntu 26.04 GNOME, GeoClue 2.7.2, static source: location on
 gave the position and `Accuracy: 10m`, exit 0, in about 0.77 s (mostly JVM
