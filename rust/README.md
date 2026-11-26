@@ -7,7 +7,7 @@ by [`spec/behavior.md`](../spec/behavior.md).
 | | |
 |---|---|
 | Windows | ✅ `Windows.Devices.Geolocation` via the [`windows`](https://crates.io/crates/windows) crate |
-| Linux | stub (planned: GeoClue2 via [`zbus`](https://crates.io/crates/zbus)) |
+| Linux | ✅ GeoClue2 over D-Bus via [`zbus`](https://crates.io/crates/zbus) (blocking API) |
 | macOS | stub (planned: CoreLocation via [`objc2-core-location`](https://crates.io/crates/objc2-core-location)) |
 
 ## Build, run, test
@@ -156,12 +156,97 @@ now". `query` returns `windows::core::Result<…>`, and `get_location` turns
 any Windows error into whereami's error kinds with `map_hresult`
 (`E_ACCESSDENIED` → permission denied, `ERROR_TIMEOUT` → timeout).
 
-## What Linux and macOS will need
+### 9. [`src/platform/linux.rs`](src/platform/linux.rs): GeoClue2 over D-Bus
 
-- **Linux**: `zbus` talks to the system D-Bus in pure Rust. GeoClue2 needs
-  `Manager.CreateClient`, then setting `DesktopId` and `RequestedAccuracyLevel`,
-  then `Client.Start` and waiting for the `LocationUpdated` signal (see
-  [`linux.zig`](../original/whereami/src/platform/linux.zig)).
+Linux has no single location API. The desktop's location service, GeoClue2,
+is a program you talk to over the system D-Bus, so this file is a
+conversation. The original ([`linux.zig`](../original/whereami/src/platform/linux.zig))
+drives libdbus by hand; here `zbus` does the wire protocol and the typed
+proxies hide the rest. The conversation:
+
+1. `Manager.CreateClient` returns the object path of a fresh client.
+2. Set the client's `DesktopId` (`"whereami"`) and `RequestedAccuracyLevel`
+   (8, GeoClue's EXACT level).
+3. Subscribe to the client's `LocationUpdated` signal, **then** call `Start`.
+   Subscribing first means the first fix can't arrive before anyone is listening.
+4. `LocationUpdated` carries the path of a `Location` object. Read its
+   `Latitude`, `Longitude` and `Accuracy` properties.
+5. Send `Stop`, without waiting for the reply.
+
+**Typed proxies.** Each D-Bus interface is a trait with an attribute:
+
+```rust
+#[zbus::proxy(
+    interface = "org.freedesktop.GeoClue2.Client",
+    default_service = "org.freedesktop.GeoClue2",
+    gen_async = false
+)]
+trait Client {
+    fn start(&self) -> zbus::Result<()>;
+    #[zbus(property)]
+    fn set_desktop_id(&self, id: &str) -> zbus::Result<()>;
+    #[zbus(signal)]
+    fn location_updated(&self, old: OwnedObjectPath, new: OwnedObjectPath) -> zbus::Result<()>;
+}
+```
+
+The macro writes a `ClientProxy` struct whose methods make the D-Bus calls.
+`#[zbus(property)]` turns `set_desktop_id` into a property write, and
+`#[zbus(signal)]` generates `receive_location_updated()`. There are three
+proxies (`Manager`, `Client`, `GeoLocation`); `Client` and `GeoLocation` have
+no fixed path, so each is built with `.path(...)` from what GeoClue returned.
+
+**Blocking API.** `gen_async = false` asks for plain blocking methods instead
+of `async fn`s, which keeps the code the same shape as the Windows backend
+(no async runtime). `zbus` 5 is pinned (`zbus = "5"`) because zbus 6 dropped
+the blocking API.
+
+**Only our signals.** The `Client` proxy sits on our client's own object
+path, so `receive_location_updated()` yields only our client's signals. No
+filtering by hand.
+
+**Timeout.** The signal iterator blocks with no limit of its own, so
+`get_location` runs the whole conversation through `platform::with_timeout`
+(the same helper as Windows) and computes one `deadline` from the overall
+timeout. A reader thread turns each signal into a `Location` and sends it over
+an `mpsc` channel; `best_fix` receives from it. `best_fix` stops early enough
+to leave `DEADLINE_MARGIN` (50 ms) for `Stop` and exit.
+
+**Best-fix window (an extension).** The original returns the first
+`LocationUpdated`. On the machine used for development, GeoClue sent a coarse
+fix first (BeaconDB/IP, about ±25 km, ~1 ms) and the precise one (a static
+±10 m source) about 5 ms later. So `best_fix` takes the first fix, keeps
+listening for `BEST_FIX_WINDOW` (250 ms, never past the deadline), and returns
+the one with the smallest `accuracy`; on a tie, the earlier. With only an IP
+source there is a single update, so the wait is the window and nothing more.
+This is an addition to the original; see "Linux fix selection (extension)"
+in [`spec/behavior.md`](../spec/behavior.md) and the
+[design note](../docs/superpowers/specs/2026-11-26-rust-linux-geoclue-design.md).
+
+**Errors.** `map_zbus_error` takes a `zbus::Error`. A method error or an
+`fdo::Error` (what property reads and writes report) is mapped by its D-Bus
+error name: a name containing `AccessDenied` → permission denied, anything
+else → location unavailable. Other failures (no bus, GeoClue not running,
+malformed reply) are also location unavailable. Matching on the name string
+keeps `map_dbus_error_name` a plain function that is easy to unit test.
+
+`reverse_geocode` returns `None` and `geocode` returns `PlatformUnsupported`:
+GeoClue has no geocoder.
+
+**The desktop file.** `DesktopId` names an app GeoClue can look up. The repo
+ships [`assets/whereami.desktop`](../assets/whereami.desktop); install it with
+
+```sh
+cp assets/whereami.desktop ~/.local/share/applications/
+```
+
+On the Ubuntu 26.04 GNOME setup used for the live check, a terminal-launched
+`whereami` still got a location with the file removed and no prompt appeared.
+Other desktops or GeoClue configurations may need it, so installing it is
+still the recommendation (the original does the same).
+
+## What macOS will need
+
 - **macOS**: `objc2-core-location` gives typed `CLLocationManager` and
   `CLGeocoder`. The app needs a delegate and a run loop, and must ship as a
   `.app` bundle with an `Info.plist` usage string or macOS won't grant

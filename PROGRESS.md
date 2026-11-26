@@ -2,7 +2,7 @@
 
 | Port | scaffold | conformance (mock) | Windows live | Linux | macOS | Anatomy |
 |---|---|---|---|---|---|---|
-| rust | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
+| rust | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
 | csharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | java | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | fsharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
@@ -43,3 +43,26 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
   warning: the jar manifest enables native access). With *Let desktop apps access your location* off:
   correct permission-denied error (checked by hand).
 - 2026-11-26 all ports: build and pass mock/usage conformance on Linux (Ubuntu 26.04) via conformance/run.sh.
+- 2026-11-26 rust, Linux live (Ubuntu 26.04 GNOME, GeoClue 2.7.2, static
+  source 42.3958, -71.1473): location on gives `Location: 42.3958, -71.1473` /
+  `Accuracy: 10m`, exit 0, about 0.26 s; `--json` gives the same position,
+  exit 0. With GNOME location services off
+  (`org.gnome.system.location enabled false`): `{"error":"permission_denied"}`
+  + `Error: location permission denied.`, exit 1, about 7 ms. With
+  `~/.local/share/applications/whereami.desktop` removed it still returned the
+  location, exit 0, and no GNOME prompt appeared, so on this GNOME setup the
+  desktop file isn't required for a terminal-launched app. We still recommend
+  installing it, as the original does; other desktops or GeoClue configs may
+  need it.
+- 2026-11-26 rust: GeoClue sent a coarse BeaconDB/IP fix (about 25 km, ~1 ms)
+  and then the static 10 m fix ~5 ms later, hence the 250 ms best-fix window
+  (the original takes the first signal). With only the IP source there is one
+  update (cold about 0.46 s, warm about 2 ms).
+- 2026-11-26 dotnet finding: building `-f net10.0-windows10.0.19041.0` on Linux
+  compiles the C#/F# Windows code. Clean code gives 0 errors; a deliberately
+  wrong WinRT member (`PositionAccuracy.Highest`, `GetGeopositionAsyncX`) was
+  reported with file and line. The `net10.0` build does not compile the
+  Windows code. Likewise `cargo check --target x86_64-pc-windows-gnu` on Linux
+  checked the Rust Windows code (clean). This cross-check is a short-term aid
+  during Linux development; long term, platforms should be optional (building
+  on Linux shouldn't need the Windows target).

@@ -27,6 +27,7 @@ git submodule update --init
 | [`original/whereami/`](original/whereami) | The upstream [whereami](https://github.com/georgemandis/whereami), as a submodule pinned to commit `f4bff19` (version 0.4.0), the version these ports are based on. Read-only reference. |
 | [`spec/behavior.md`](spec/behavior.md) | The behavior every port implements |
 | [`spec/cases.json`](spec/cases.json) | The strict part of the spec, as test cases |
+| [`assets/`](assets/) | [`whereami.desktop`](assets/whereami.desktop), which GeoClue uses to recognize the app on Linux; shared by all ports |
 | [`conformance/`](conformance/) | Runner that checks a port's binary against the cases |
 | [`PROGRESS.md`](PROGRESS.md) | Which port is where |
 | [`docs/comparison.md`](docs/comparison.md) | The ports side by side |
