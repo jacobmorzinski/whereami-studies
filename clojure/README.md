@@ -13,10 +13,12 @@ that layer is Clojure: plain data (maps, keywords), functions, and
 | | |
 |---|---|
 | Windows | ✅ the Java port's `WindowsPlatform` (FFM + WinRT by hand), called through interop |
-| Linux | the Java port's `LinuxPlatform` (GeoClue2 via dbus-java), called through interop; checked live, docs to come |
+| Linux | ✅ the Java port's `LinuxPlatform` (GeoClue2 via dbus-java), called through interop; checked live (GeoClue2 details in the [Java README](../java/README.md)) |
 | macOS | stub; the same, plus an `.app` bundle |
 
 ## Build, run, test
+
+Windows (PowerShell):
 
 ```powershell
 java/gradlew.bat -p java :platform:jar     # the Java OS layer, as java/platform/build/libs/platform.jar
@@ -32,10 +34,24 @@ While developing, `clojure -M -m whereami.main --json` (in `clojure/`) runs
 it without building the jar. Add `-J--enable-native-access=ALL-UNNAMED` to
 skip the JVM's FFM warning.
 
+Linux (`sh`):
+
+```sh
+java/gradlew -p java :platform:jar         # the Java OS layer, as java/platform/build/libs/platform.jar
+(cd clojure && clojure -T:build uber)      # clojure/target/whereami.jar
+java -jar clojure/target/whereami.jar --json
+(cd clojure && clojure -X:test)            # tests
+bash conformance/run.sh --port clojure
+```
+
 On Windows, live location needs *Settings → Privacy & security → Location*
 with *Location services* and *Let desktop apps access your location* on.
 Windows may ask whether "Java" may use your location: to Windows, the app is
 `java.exe`.
+
+On Linux (GNOME), turn on *Settings → Privacy → Location Services* and install
+the desktop file from the repo root:
+`cp assets/whereami.desktop ~/.local/share/applications/`.
 
 ## Anatomy
 
@@ -54,6 +70,14 @@ Read the files in this order.
   - `:build` adds tools.build.
   - `clojure -X:test` runs a function, `cognitect.test-runner.api/test`.
   - `clojure -T:build uber` runs `build/uber`.
+
+One entry is there for Linux. `platform.jar` is a bare `:local/root` jar, so
+its Maven dependencies don't come with it. The Linux backend needs `dbus-java`
+and, at runtime, a `native-unixsocket` transport and `slf4j-nop` (which stops
+SLF4J printing a warning on stderr), so `deps.edn` lists all three. Their
+versions are kept in step with the Java port's `gradle/libs.versions.toml` by
+hand. See the Java README's
+[Linux section](../java/README.md#10-linux-d-bus-through-a-library) for what the backend does.
 
 You don't need a build step to run or test the code: `clojure` reads the
 sources directly. A build is only needed for a jar.
@@ -154,6 +178,10 @@ The interop syntax:
 | `class Fake implements Platform { … }` | `(reify Platform (getLocation [_ t] …) …)` |
 
 [`fakes.clj`](test/whereami/fakes.clj) builds test platforms with `reify`.
+On Linux the same `(Platforms/nativePlatform)` call returns `LinuxPlatform`,
+so none of this boundary code changes; the only Linux change in this port is
+in [`deps.edn`](#1-depsedn-dependencies-and-aliases).
+
 Checked exceptions don't exist for Clojure: `getLocation` is declared
 `throws LocationException`, and Clojure simply lets it be thrown and caught.
 
@@ -168,17 +196,10 @@ This namespace is where Java values become Clojure data:
 |---|---|---|---|---|---|---|
 | Windows call | `RoActivateInstance` + vtables | `windows` crate | WinRT projection | FFM by hand | WinRT projection | Java's `WindowsPlatform`, through interop |
 
-## What Linux and macOS will need
+## What macOS will need
 
-**Linux** needed one change here, in [`deps.edn`](deps.edn). `platform.jar` is
-a bare `:local/root` jar, so its Maven dependencies don't come with it. The
-Linux backend needs `dbus-java` and, at runtime, a `native-unixsocket`
-transport and `slf4j-nop` (which stops SLF4J printing a warning on stderr), so
-`deps.edn` lists all three. Their versions are kept in step with the Java
-port's `gradle/libs.versions.toml` by hand.
-
-**macOS**: nothing in this folder, beyond rebuilding `platform.jar`. When the
-Java `platform` project gets a macOS backend (FFM and the Objective-C
-runtime), `Platforms/nativePlatform` returns it and this port uses it
-unchanged. On macOS, CoreLocation also needs an `.app` bundle around
-the JVM.
+- **macOS**: nothing in this folder, beyond rebuilding `platform.jar`. When the
+  Java `platform` project gets a macOS backend (FFM and the Objective-C
+  runtime), `Platforms/nativePlatform` returns it and this port uses it
+  unchanged. On macOS, CoreLocation also needs an `.app` bundle around
+  the JVM.

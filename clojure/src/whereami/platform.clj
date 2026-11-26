@@ -13,7 +13,7 @@
 (set! *warn-on-reflection* true)
 
 (defn native
-  "The Java platform for the OS we're running on (WindowsPlatform on Windows)."
+  "The Java platform for the OS we're running on (WindowsPlatform on Windows, LinuxPlatform on Linux)."
   ^Platform []
   (Platforms/nativePlatform))
 
