@@ -4,6 +4,8 @@
     <OutputType>Exe</OutputType>
     <!-- Plain net10.0 runs on any OS; the -windows target adds the WinRT projection and the WINDOWS symbol. -->
     <TargetFrameworks>net10.0;net10.0-windows10.0.19041.0</TargetFrameworks>
+    <!-- Lets non-Windows hosts restore the Windows target; no effect on Windows. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>whereami</AssemblyName>
     <Version>0.4.0</Version>
   </PropertyGroup>

@@ -5,6 +5,8 @@
     <!-- net10.0 runs anywhere; the -windows10.0.19041.0 target adds the
          WinRT projection (Windows.* namespaces) and defines WINDOWS. -->
     <TargetFrameworks>net10.0;net10.0-windows10.0.19041.0</TargetFrameworks>
+    <!-- Lets non-Windows hosts restore the Windows target; no effect on Windows. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>whereami</AssemblyName>
     <RootNamespace>Whereami</RootNamespace>
     <Version>0.4.0</Version>
