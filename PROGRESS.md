@@ -6,7 +6,7 @@
 | csharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | java | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
 | fsharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
-| clojure | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
+| clojure | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
 
 Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
 
@@ -73,5 +73,12 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
   services off: `{"error":"permission_denied"}` + `Error: location permission
   denied.`, exit 1, about 0.36 s. With the desktop file removed it still
   located, exit 0, no GNOME prompt. The Clojure uberjar passed the same three
-  checks through the Java platform (about 1.05 s, 0.81 s); its Linux column
-  stays open until its docs milestone.
+  checks through the Java platform (about 1.05 s, 0.81 s).
+- 2026-11-26 clojure, Linux live (the Java port's LinuxPlatform, through
+  interop; Ubuntu 26.04 GNOME, GeoClue 2.7.2, static source 42.3958, -71.1473;
+  uberjar): location on gives `Location: 42.3958, -71.1473` / `Accuracy: 10m`,
+  `--json` the same, exit 0, stderr empty, about 1.05 s. With GNOME location
+  services off: `{"error":"permission_denied"}` + `Error: location permission
+  denied.`, exit 1, about 0.81 s. With the desktop file removed it still
+  located, no GNOME prompt. Tests 49 pass; conformance 29/0/0. The only
+  Linux change in this port is the dbus-java and slf4j-nop entries in deps.edn.
