@@ -11,7 +11,9 @@ use super::Platform;
 use crate::model::{Address, GeocodeResult, Location, LocationError};
 use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
+use zbus::DBusError;
 use zbus::blocking::Connection;
+use zbus::proxy::MethodFlags;
 use zbus::zvariant::OwnedObjectPath;
 
 pub struct Linux;
@@ -36,7 +38,6 @@ trait Manager {
 )]
 trait Client {
     fn start(&self) -> zbus::Result<()>;
-    fn stop(&self) -> zbus::Result<()>;
 
     #[zbus(property)]
     fn set_desktop_id(&self, id: &str) -> zbus::Result<()>;
@@ -75,6 +76,8 @@ fn map_dbus_error_name(name: &str) -> LocationError {
 fn map_zbus_error(e: zbus::Error) -> LocationError {
     match e {
         zbus::Error::MethodError(name, _, _) => map_dbus_error_name(name.as_str()),
+        // Property reads and writes report failures as `fdo::Error`.
+        zbus::Error::FDO(e) => map_dbus_error_name(e.name().as_str()),
         _ => LocationError::LocationUnavailable,
     }
 }
@@ -83,13 +86,16 @@ fn map_zbus_error(e: zbus::Error) -> LocationError {
 /// sends a coarse IP fix first and the precise fix a few ms later.
 const BEST_FIX_WINDOW: Duration = Duration::from_millis(250);
 
-/// Wait for the first fix, then keep listening for `grace` and return the most
-/// accurate one seen (smallest `accuracy`; on a tie, the earlier). `None` if
-/// the sender goes away before any fix arrives.
-fn best_fix(updates: &Receiver<Location>, grace: Duration) -> Option<Location> {
+/// Time kept in reserve before the overall deadline, for `Stop` and exit.
+const DEADLINE_MARGIN: Duration = Duration::from_millis(50);
+
+/// Wait for the first fix, then keep listening for `grace` (but never past
+/// `deadline`) and return the most accurate one seen (smallest `accuracy`; on a
+/// tie, the earlier). `None` if the sender goes away before any fix arrives.
+fn best_fix(updates: &Receiver<Location>, grace: Duration, deadline: Instant) -> Option<Location> {
     let mut best = updates.recv().ok()?;
-    let deadline = Instant::now() + grace;
-    while let Ok(fix) = updates.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+    let end = (Instant::now() + grace).min(deadline);
+    while let Ok(fix) = updates.recv_timeout(end.saturating_duration_since(Instant::now())) {
         if fix.accuracy < best.accuracy {
             best = fix;
         }
@@ -97,7 +103,7 @@ fn best_fix(updates: &Receiver<Location>, grace: Duration) -> Option<Location> {
     Some(best)
 }
 
-fn query() -> Result<Location, LocationError> {
+fn query(deadline: Instant) -> Result<Location, LocationError> {
     let conn = Connection::system().map_err(map_zbus_error)?;
     let client_path = ManagerProxy::new(&conn)
         .and_then(|manager| manager.create_client())
@@ -132,8 +138,10 @@ fn query() -> Result<Location, LocationError> {
     });
     client.start().map_err(map_zbus_error)?;
 
-    let result = best_fix(&rx, BEST_FIX_WINDOW).ok_or(LocationError::LocationUnavailable);
-    let _ = client.stop(); // best effort
+    let result = best_fix(&rx, BEST_FIX_WINDOW, deadline - DEADLINE_MARGIN)
+        .ok_or(LocationError::LocationUnavailable);
+    // Best effort, and without waiting for a reply so it can't eat the budget.
+    let _ = client.inner().call_with_flags::<_, _, ()>("Stop", MethodFlags::NoReplyExpected.into(), &());
     result
 }
 
@@ -153,7 +161,8 @@ impl Platform for Linux {
     /// The whole conversation gets `timeout` in total: the signal iterator
     /// blocks without a limit, so the query runs under `with_timeout`.
     fn get_location(&self, timeout: Duration) -> Result<Location, LocationError> {
-        super::with_timeout(timeout, query)
+        let deadline = Instant::now() + timeout;
+        super::with_timeout(timeout, move || query(deadline))
     }
 
     /// GeoClue has no geocoder.
@@ -190,6 +199,33 @@ mod tests {
         assert_eq!(map_dbus_error_name(""), LocationError::LocationUnavailable);
     }
 
+    fn far() -> Instant {
+        Instant::now() + Duration::from_secs(60)
+    }
+
+    #[test]
+    fn fdo_access_denied_maps_to_permission_denied() {
+        let e = zbus::Error::FDO(Box::new(zbus::fdo::Error::AccessDenied("x".into())));
+        assert_eq!(map_zbus_error(e), LocationError::PermissionDenied);
+    }
+
+    #[test]
+    fn fdo_service_unknown_maps_to_unavailable() {
+        let e = zbus::Error::FDO(Box::new(zbus::fdo::Error::ServiceUnknown("x".into())));
+        assert_eq!(map_zbus_error(e), LocationError::LocationUnavailable);
+    }
+
+    #[test]
+    fn best_fix_clamps_grace_to_deadline() {
+        let (tx, rx) = mpsc::channel();
+        tx.send(fix(5.0)).unwrap();
+        let start = Instant::now();
+        let deadline = start + Duration::from_millis(30);
+        assert_eq!(best_fix(&rx, Duration::from_millis(250), deadline), Some(fix(5.0)));
+        assert!(start.elapsed() < Duration::from_millis(150), "waited {:?}", start.elapsed());
+        drop(tx);
+    }
+
     fn fix(accuracy: f64) -> Location {
         Location { latitude: accuracy, longitude: 0.0, accuracy }
     }
@@ -199,7 +235,7 @@ mod tests {
         let (tx, rx) = mpsc::channel();
         tx.send(fix(25000.0)).unwrap();
         tx.send(fix(10.0)).unwrap();
-        assert_eq!(best_fix(&rx, Duration::from_millis(20)), Some(fix(10.0)));
+        assert_eq!(best_fix(&rx, Duration::from_millis(20), far()), Some(fix(10.0)));
     }
 
     #[test]
@@ -207,7 +243,7 @@ mod tests {
         let (tx, rx) = mpsc::channel();
         tx.send(fix(5.0)).unwrap();
         let start = Instant::now();
-        assert_eq!(best_fix(&rx, Duration::from_millis(50)), Some(fix(5.0)));
+        assert_eq!(best_fix(&rx, Duration::from_millis(50), far()), Some(fix(5.0)));
         assert!(start.elapsed() < Duration::from_secs(1), "waited {:?}", start.elapsed());
         drop(tx);
     }
@@ -219,7 +255,7 @@ mod tests {
         let second = Location { latitude: 2.0, longitude: 2.0, accuracy: 10.0 };
         tx.send(first).unwrap();
         tx.send(second).unwrap();
-        assert_eq!(best_fix(&rx, Duration::from_millis(20)), Some(first));
+        assert_eq!(best_fix(&rx, Duration::from_millis(20), far()), Some(first));
     }
 
     #[test]
@@ -230,7 +266,7 @@ mod tests {
             std::thread::sleep(Duration::from_millis(80));
             let _ = tx.send(fix(1.0));
         });
-        assert_eq!(best_fix(&rx, Duration::from_millis(50)), Some(fix(100.0)));
+        assert_eq!(best_fix(&rx, Duration::from_millis(50), far()), Some(fix(100.0)));
         late.join().unwrap();
     }
 
@@ -238,6 +274,6 @@ mod tests {
     fn best_fix_none_when_sender_dropped() {
         let (tx, rx) = mpsc::channel::<Location>();
         drop(tx);
-        assert_eq!(best_fix(&rx, Duration::from_millis(20)), None);
+        assert_eq!(best_fix(&rx, Duration::from_millis(20), far()), None);
     }
 }
