@@ -4,7 +4,9 @@
 use crate::model::{Address, GeocodeResult, Location, LocationError};
 use std::time::Duration;
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
 mod unsupported;
 #[cfg(target_os = "windows")]
 mod windows;
@@ -31,7 +33,7 @@ pub trait Platform {
 /// OS calls like `.join()` on a WinRT async operation can block with no limit
 /// of their own. If time runs out we return `Timeout` and leave the worker
 /// behind; the process exits right after, which ends it.
-#[allow(dead_code)] // used by the Windows backend only
+#[cfg(any(target_os = "windows", target_os = "linux", test))]
 pub(crate) fn with_timeout<F>(timeout: Duration, query: F) -> Result<Location, LocationError>
 where
     F: FnOnce() -> Result<Location, LocationError> + Send + 'static,
@@ -75,6 +77,8 @@ mod tests {
 pub fn native() -> Box<dyn Platform> {
     #[cfg(target_os = "windows")]
     return Box::new(windows::Windows);
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
+    return Box::new(linux::Linux);
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     return Box::new(unsupported::Unsupported);
 }
