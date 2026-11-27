@@ -13,6 +13,7 @@
     <Compile Include="CommandLineTests.fs" />
     <Compile Include="AppTests.fs" />
     <Compile Include="WindowsTests.fs" />
+    <Compile Include="LinuxTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -16,6 +16,8 @@
     <Compile Include="Output.fs" />
     <Compile Include="Platform.fs" />
     <Compile Include="Windows.fs" />
+    <Compile Include="GeoClue.fs" />
+    <Compile Include="Linux.fs" />
     <Compile Include="Native.fs" />
     <Compile Include="CommandLine.fs" />
     <Compile Include="App.fs" />
@@ -28,6 +30,9 @@
 
   <ItemGroup>
     <PackageReference Include="Argu" Version="6.2.5" />
+    <!-- Classic Tmds.DBus (runtime-generated proxies) for the Linux GeoClue2 backend;
+         the Windows build has no D-Bus code. -->
+    <PackageReference Include="Tmds.DBus" Version="0.95.2" Condition="'$(TargetFramework)' == 'net10.0'" />
   </ItemGroup>
 
 </Project>
