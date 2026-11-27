@@ -8,7 +8,7 @@ has the same structure, so the two can be read side by side.
 | | |
 |---|---|
 | Windows | ✅ `Windows.Devices.Geolocation` via .NET's built-in WinRT projection |
-| Linux | stub (planned: GeoClue2 via [`Tmds.DBus`](https://www.nuget.org/packages/Tmds.DBus)) |
+| Linux | ✅ GeoClue2 over D-Bus via [`Tmds.DBus`](https://www.nuget.org/packages/Tmds.DBus) (portable `net10.0` build) |
 | macOS | stub (planned: CoreLocation via the `net10.0-macos` bindings) |
 
 ## Build, run, test
@@ -23,8 +23,26 @@ pwsh conformance/run.ps1 -Port csharp
 While developing, `dotnet run --project csharp/src/Whereami -f net10.0-windows10.0.19041.0 -- --json`
 builds and runs in one step. Everything after `--` goes to whereami.
 
+On Linux:
+
+```sh
+dotnet publish csharp/src/Whereami -c Release -f net10.0 -o csharp/out/linux
+csharp/out/linux/whereami --json
+dotnet test csharp/tests/Whereami.Tests -f net10.0
+bash conformance/run.sh --port csharp
+```
+
 On Windows, live location needs *Settings → Privacy & security → Location*
 with *Location services* and *Let desktop apps access your location* on.
+
+On Linux, the location comes from GeoClue2. On GNOME, turn *Location
+Services* on in *Settings → Privacy*. Installing the desktop file is
+recommended (the original does the same), though an Ubuntu 26.04 GNOME session
+located without it. From the repo root:
+
+```sh
+cp assets/whereami.desktop ~/.local/share/applications/
+```
 
 ## Anatomy
 
@@ -56,7 +74,10 @@ picks the newest SDK installed, and that can change under you.
   2. It defines the `WINDOWS` compile-time symbol, so `#if WINDOWS` code
      exists only in that build.
 
-  `dotnet build` builds both. `-f` picks one.
+  `dotnet build` builds both. `-f` picks one. The Linux backend lives in the
+  plain `net10.0` build: the `Tmds.DBus` package reference carries
+  `Condition="'$(TargetFramework)' == 'net10.0'"`, so the Windows build
+  neither references nor compiles any D-Bus code.
 - **[`tests/Whereami.Tests/Whereami.Tests.csproj`](tests/Whereami.Tests/Whereami.Tests.csproj)**:
   tests live in a separate project, as is usual in .NET. It references the app
   project and uses xUnit (`[Fact]` is one test, `[Theory]` + `[InlineData]` is
@@ -152,6 +173,9 @@ real bugs crash loudly.
 #if WINDOWS                          // compile time: is the Windows code in this build?
 if (OperatingSystem.IsWindows())     // run time: are we on Windows?
     return new WindowsPlatform();
+#else                                // the portable build: Linux's D-Bus code is here
+if (OperatingSystem.IsLinux())
+    return new LinuxPlatform(App.Timeout);
 #endif
 return new UnsupportedPlatform();
 ```
@@ -185,14 +209,58 @@ The projection makes WinRT feel native to .NET: `Geolocator` is a class you
 denied → permission denied, cancellation or `ERROR_TIMEOUT` → timeout,
 anything else → unavailable.
 
-## What Linux and macOS will need
+### 10. [`Platforms/LinuxPlatform.cs`](src/Whereami/Platforms/LinuxPlatform.cs): D-Bus through a library
 
-- **Linux**: `Tmds.DBus` generates typed C# proxies for D-Bus interfaces.
-  GeoClue2 needs `Manager.CreateClient`, then setting `DesktopId` and
-  `RequestedAccuracyLevel`, then `Client.Start` and waiting for
-  `LocationUpdated` (see [`linux.zig`](../original/whereami/src/platform/linux.zig)).
-  It would be a third target framework or a runtime branch on `OperatingSystem.IsLinux()`.
-- **macOS**: the `net10.0-macos` target framework (the `macos` workload)
+GeoClue2 is a D-Bus service. [`GeoClue.cs`](src/Whereami/Platforms/GeoClue.cs)
+declares the three interfaces we use (`Manager`, `Client`, `Location`) as
+C# interfaces annotated with `[DBusInterface("org.freedesktop.GeoClue2.…")]`.
+`Tmds.DBus` generates the proxy classes from them at run time, which is why
+the interfaces are `public`. This is the classic Tmds.DBus API: async/await,
+no source generator.
+
+- **Same conversation as Rust.** `CreateClient` on the manager, `Set` the
+  `DesktopId` (`whereami`) and `RequestedAccuracyLevel` (`8`, GeoClue's EXACT
+  level, sent as a D-Bus `uint32` so it is a C# `uint`), subscribe to
+  `LocationUpdated`, then `Start`. Subscribing first means the first fix can't
+  slip past. The proxy sits on our client's own path, so only our signals arrive.
+- **Reading a fix.** The signal carries *object paths* of `Location` objects,
+  not coordinates. Each path goes onto a `Channel`, and one reader loop reads
+  `Latitude`, `Longitude` and `Accuracy` in order. A fix whose properties
+  can't be read is dropped, not turned into accuracy 0, which would always
+  look best.
+- **The best-fix window.** GeoClue may send a coarse fix first and a precise
+  one moments later. `BestFixAsync` waits for the first fix, keeps listening
+  for 250 ms (never past the deadline) and returns the smallest accuracy; on a
+  tie the earlier fix wins. The original takes the first signal. It is a pure
+  function over a `ChannelReader`, so
+  [`LinuxPlatformTests`](tests/Whereami.Tests/LinuxPlatformTests.cs) tests it
+  without a bus.
+- **Timeout.** `Tmds.DBus` has no connect timeout and its calls take no
+  token, so every call is awaited through `.WaitAsync(ct)`, and the token is
+  cancelled after the budget (the platform's constructor argument, because
+  `IPlatform` only passes a token). `Stop` is sent in a `finally` on every
+  path, with its wait bounded to 30 ms.
+- **Errors.** A `DBusException` carries the D-Bus error name; one containing
+  `AccessDenied` is `permission_denied`, any other failure (including no bus)
+  is `location_unavailable`. An exception filter lets `LocationException` and
+  cancellation through, so nothing unexpected escapes.
+- **No geocoder.** `ReverseGeocodeAsync` returns `null` and `GeocodeAsync`
+  throws `platform_unsupported`, as in the other ports. GeoClue has none.
+- **The desktop file.** `DesktopId` is `whereami`, which GeoClue matches with
+  [`assets/whereami.desktop`](../assets/whereami.desktop), at the repo root
+  because every port shares it.
+
+| | Zig ([`linux.zig`](../original/whereami/src/platform/linux.zig)) | Rust | C# |
+|---|---|---|---|
+| D-Bus | libdbus C calls | `zbus` blocking proxies | `Tmds.DBus` proxies generated from annotated interfaces |
+| Subscribing | `dbus_bus_add_match` rule, then pop messages | `receive_location_updated()` iterator on its own thread | `WatchLocationUpdatedAsync` + `Channel` |
+| Waiting | `read_write_dispatch` loop until the timeout | `best_fix` with `recv_timeout` | `BestFixAsync` over `WaitToReadAsync` |
+| Timeout | loop deadline | worker thread + `recv_timeout` | `CancelAfter` + `WaitAsync` on every call |
+| Errors | error name check | error name → `LocationError` | `DBusException.ErrorName` → `LocationError` |
+
+## What macOS will need
+
+The `net10.0-macos` target framework (the `macos` workload)
   binds CoreLocation and `CLGeocoder`. Its build output is an `.app` bundle
   with `Info.plist`, which CoreLocation requires before it will grant
   permission.

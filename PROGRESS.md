@@ -3,7 +3,7 @@
 | Port | scaffold | conformance (mock) | Windows live | Linux | macOS | Anatomy |
 |---|---|---|---|---|---|---|
 | rust | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
-| csharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
+| csharp | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
 | java | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
 | fsharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
 | clojure | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
@@ -82,3 +82,12 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
   denied.`, exit 1, about 0.81 s. With the desktop file removed it still
   located, no GNOME prompt. Tests 49 pass; conformance 29/0/0. The only
   Linux change in this port is the dbus-java and slf4j-nop entries in deps.edn.
+- 2026-11-26 csharp, Linux live (Ubuntu 26.04 GNOME, GeoClue 2.7.2, static
+  source 42.3958, -71.1473; Tmds.DBus 0.95.2, `net10.0` build): location on
+  gives `Location: 42.3958, -71.1473` / `Accuracy: 10m`, exit 0, about 0.47 s;
+  `--json` gives `{"latitude":42.3958,"longitude":-71.1473,"accuracy":10,"address":null}`
+  in about 0.51 s; stderr empty. With GNOME location services off:
+  `permission_denied`, exit 1, about 0.2 s, spec stderr only. With the desktop
+  file removed it still located, same as with it, no GNOME prompt. Tests 53
+  pass; conformance 29/0/0. The Windows-target build still compiles on Linux
+  (short-term cross-check only).
