@@ -21,14 +21,20 @@ public static class Platforms
         OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsMacOS() ? "macos" : "linux";
 
     /// The implementation for the OS we're running on. Two layers:
-    /// #if WINDOWS — is the Windows code compiled into this build at all?
-    /// OperatingSystem.IsWindows() — are we actually running on Windows?
+    /// #if WINDOWS / #if !WINDOWS — is that OS's code compiled into this build at all?
+    /// (Linux's D-Bus code is only in the portable build.)
+    /// OperatingSystem.IsWindows() / IsLinux() — are we actually running there?
     public static IPlatform Native()
     {
 #if WINDOWS
         if (OperatingSystem.IsWindows())
         {
             return new WindowsPlatform();
+        }
+#else
+        if (OperatingSystem.IsLinux())
+        {
+            return new LinuxPlatform(App.Timeout);
         }
 #endif
         return new UnsupportedPlatform();
