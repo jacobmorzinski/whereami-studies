@@ -5,7 +5,7 @@
 | rust | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
 | csharp | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
 | java | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
-| fsharp | ✅ | ✅ | ✅ | ⬜ | ⬜ | ✅ |
+| fsharp | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
 | clojure | ✅ | ✅ | ✅ | ✅ | ⬜ | ✅ |
 
 Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
@@ -91,3 +91,13 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ➖ n/a
   file removed it still located, same as with it, no GNOME prompt. Tests 53
   pass; conformance 29/0/0. The Windows-target build still compiles on Linux
   (short-term cross-check only).
+- 2026-11-26 fsharp, Linux live (Ubuntu 26.04 GNOME, GeoClue 2.7.2, static
+  source 42.3958, -71.1473; Tmds.DBus 0.95.2, `net10.0` build): location on
+  gives `Location: 42.3958, -71.1473` / `Accuracy: 10m`, exit 0, about 0.72 s;
+  `--json` gives `{"latitude":42.3958,"longitude":-71.1473,"accuracy":10,"address":null}`
+  in about 0.71 s; stderr empty. With GNOME location services off:
+  `permission_denied`, exit 1, about 0.45 s, spec stderr only. With the desktop
+  file removed it still located, same as with it, no GNOME prompt. Tests 59
+  pass; conformance 29/0/0. The F# interfaces needed no Tmds.DBus workaround.
+  The Windows-target build still compiles on Linux (short-term cross-check
+  only). All five ports now work on Linux; macOS is still open for all.
